@@ -54,7 +54,7 @@ void main() {
     final state = LiveActivityState.of(timer, now);
 
     expect(state.phase, 'roundRest');
-    expect(state.position, 'Round 1 / 2 · Round complete');
+    expect(state.position, 'Round 1 / 2 · Complete');
     expect(state.next, 'Next: Round 2 · 0:30');
     expect(state.pausedRemaining, const Duration(seconds: 55));
     expect(state.toMap()['pausedRemaining'], 55.0);

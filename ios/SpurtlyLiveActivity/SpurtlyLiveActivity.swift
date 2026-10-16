@@ -68,6 +68,7 @@ struct SpurtlyLiveActivity: Widget {
 
 private struct LockScreenView: View {
   let state: SpurtlyActivityAttributes.ContentState
+  @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
   var body: some View {
     VStack(spacing: 10) {
@@ -77,25 +78,44 @@ private struct LockScreenView: View {
             .font(.headline.weight(.heavy))
           Text(state.position)
             .font(.subheadline)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
             .opacity(0.85)
           Text(state.next)
             .font(.caption)
+            .lineLimit(1)
             .opacity(0.75)
         }
+        .contentTransition(.opacity)
         Spacer(minLength: 0)
         Countdown(state: state)
           .font(.system(size: 44, weight: .heavy).monospacedDigit())
           .multilineTextAlignment(.trailing)
           .frame(maxWidth: 130, alignment: .trailing)
       }
+      // A new phase cross-fades in instead of replacing the old one at once.
+      .id(state.phaseKey)
+      .transition(.opacity)
       if !state.isDone {
+        // With the screen on, iOS sweeps the bar smoothly. In the dimmed
+        // Always-On state it only redraws once a second, so the bar would
+        // jump; hide it there (keeping its space so the card doesn't resize)
+        // and let the countdown carry the time.
         PhaseProgress(state: state)
+          .opacity(isLuminanceReduced ? 0 : 1)
+          // The new phase's full bar fades in over the old, empty one.
+          .id(state.phaseKey)
+          .transition(.opacity)
         Controls(state: state, tint: .white)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
     }
     .padding(16)
     .foregroundStyle(.white)
+    // Drawn here rather than only through activityBackgroundTint, which iOS
+    // swaps instantly; this one blends into the next phase's color.
+    .background(state.style.background)
+    .animation(.smooth(duration: 0.6), value: state.phaseKey)
   }
 }
 
@@ -109,8 +129,10 @@ private struct Countdown: View {
       Image(systemName: "checkmark")
     } else if let remaining = state.pausedRemaining {
       Text(Self.format(remaining))
+        .contentTransition(.numericText(countsDown: true))
     } else {
       Text(timerInterval: state.phaseStart...state.phaseEnd, countsDown: true)
+        .contentTransition(.numericText(countsDown: true))
     }
   }
 
@@ -172,6 +194,8 @@ private struct PhaseStyle {
 
 private extension SpurtlyActivityAttributes.ContentState {
   var isPaused: Bool { pausedRemaining != nil }
+  /// Changes when a new phase starts, but not when pausing or resuming.
+  var phaseKey: String { "\(phase)|\(position)" }
   var isDone: Bool { phase == "done" }
 
   var style: PhaseStyle {

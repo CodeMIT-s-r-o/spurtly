@@ -102,6 +102,11 @@ Dart sends the phase, its start and end time and whether it is paused over the
 `spurtly/live_activity` method channel. The activity counts down by itself, so
 it is only updated when the phase or the paused state changes.
 
+With the screen on, iOS sweeps the progress bar smoothly. In the dimmed
+Always-On state it redraws only once a second, so the bar is hidden there and
+the countdown carries the time. A new phase cross-fades in: the card blends to
+the next phase's color and the full bar fades in over the empty one.
+
 The Pause/Resume and Skip buttons are `LiveActivityIntent`s. iOS runs them in
 the app's process, where `LiveActivityChannel` forwards them to Dart. While the
 activity is showing, the app stays alive even when paused, so Resume works from

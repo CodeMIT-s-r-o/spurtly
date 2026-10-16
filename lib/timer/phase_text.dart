@@ -12,7 +12,7 @@ import '../theme.dart';
   return switch (phase.type) {
     PhaseType.warmup => ('Get ready', null),
     PhaseType.work || PhaseType.rest => (round, interval),
-    PhaseType.roundRest => (round, 'Round complete'),
+    PhaseType.roundRest => (round, 'Complete'),
   };
 }
 
