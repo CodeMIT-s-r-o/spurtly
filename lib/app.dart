@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'models/workout_config.dart';
 import 'screens/setup_screen.dart';
+import 'services/live_activity.dart';
 import 'services/sounds.dart';
 import 'services/workout_notifications.dart';
 import 'theme.dart';
@@ -13,12 +14,14 @@ class SpurtlyApp extends StatelessWidget {
     required this.onConfigChanged,
     required this.sounds,
     required this.notifications,
+    required this.liveActivity,
   });
 
   final WorkoutConfig initialConfig;
   final ValueChanged<WorkoutConfig> onConfigChanged;
   final Sounds sounds;
   final WorkoutNotifications notifications;
+  final LiveActivity liveActivity;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +34,7 @@ class SpurtlyApp extends StatelessWidget {
         onConfigChanged: onConfigChanged,
         sounds: sounds,
         notifications: notifications,
+        liveActivity: liveActivity,
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spurtly/app.dart';
 import 'package:spurtly/models/workout_config.dart';
+import 'package:spurtly/services/live_activity.dart';
 import 'package:spurtly/services/sounds.dart';
 import 'package:spurtly/services/workout_notifications.dart';
 
@@ -11,6 +12,23 @@ class _SilentSounds implements Sounds {
 
   @override
   Future<void> keepAlive(bool active) async {}
+}
+
+class _NoLiveActivity implements LiveActivity {
+  @override
+  Future<bool> start(LiveActivityState state) async => false;
+
+  @override
+  Future<void> update(LiveActivityState state) async {}
+
+  @override
+  Future<void> end({
+    LiveActivityState? finalState,
+    Duration? dismissAfter,
+  }) async {}
+
+  @override
+  set onControl(ValueChanged<LiveActivityControl>? handler) {}
 }
 
 class _NoNotifications implements WorkoutNotifications {
@@ -41,6 +59,7 @@ void main() {
         onConfigChanged: (config) => saved = config,
         sounds: _SilentSounds(),
         notifications: _NoNotifications(),
+        liveActivity: _NoLiveActivity(),
       ),
     );
 

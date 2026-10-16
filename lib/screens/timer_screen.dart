@@ -7,9 +7,11 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/phase.dart';
 import '../models/workout_config.dart';
+import '../services/live_activity.dart';
 import '../services/sounds.dart';
 import '../services/workout_notifications.dart';
 import '../theme.dart';
+import '../timer/phase_text.dart';
 import '../timer/workout_timer.dart';
 
 class TimerScreen extends StatefulWidget {
@@ -18,11 +20,13 @@ class TimerScreen extends StatefulWidget {
     required this.config,
     required this.sounds,
     required this.notifications,
+    required this.liveActivity,
   });
 
   final WorkoutConfig config;
   final Sounds sounds;
   final WorkoutNotifications notifications;
+  final LiveActivity liveActivity;
 
   @override
   State<TimerScreen> createState() => _TimerScreenState();
@@ -41,25 +45,81 @@ class _TimerScreenState extends State<TimerScreen>
   final _frame = ValueNotifier<int>(0);
   late final Ticker _frames = createTicker((_) => _frame.value++);
 
-  /// While the app is in the background the lock screen shows the current
-  /// phase as a notification; it goes away once the app is back.
+  /// Without a Live Activity, the lock screen shows the current phase as a
+  /// notification while the app is in the background; it goes away once the
+  /// app is back.
   late final AppLifecycleListener _lifecycle;
 
   bool _keepingAlive = false;
+  bool _liveActivityShown = false;
+
+  /// What the Live Activity was last told, so it is only updated when the
+  /// phase or the paused state changes.
+  (Phase?, bool)? _liveActivityKey;
 
   @override
   void initState() {
     super.initState();
-    _timer.addListener(_syncRunning);
+    _timer
+      ..addListener(_syncRunning)
+      ..addListener(_syncLiveActivity);
+    widget.liveActivity.onControl = _onLiveActivityControl;
     _lifecycle = AppLifecycleListener(
       onHide: () {
-        if (_timer.isRunning) _notify(_timer.phase);
+        if (_timer.isRunning && !_liveActivityShown) _notify(_timer.phase);
       },
       onShow: () => unawaited(widget.notifications.clear()),
     );
     // Keep the timer in view while the phone lies on the floor.
     unawaited(WakelockPlus.enable());
     _timer.start();
+    unawaited(_startLiveActivity());
+  }
+
+  Future<void> _startLiveActivity() async {
+    final shown = await widget.liveActivity.start(
+      LiveActivityState.of(_timer, DateTime.now()),
+    );
+    if (!shown) return;
+    if (!mounted) {
+      unawaited(widget.liveActivity.end());
+      return;
+    }
+    _liveActivityShown = true;
+    // The app may have gone to the background while the activity was
+    // starting and posted the fallback notification; the activity replaces it.
+    unawaited(widget.notifications.clear());
+    _liveActivityKey = (_timer.phase, _timer.isRunning);
+    _syncRunning();
+    _syncLiveActivity(); // In case something changed while it was starting.
+  }
+
+  void _syncLiveActivity() {
+    if (!_liveActivityShown) return;
+    final key = (_timer.phase, _timer.isRunning);
+    if (key == _liveActivityKey) return;
+    _liveActivityKey = key;
+    final state = LiveActivityState.of(_timer, DateTime.now());
+    if (_timer.isFinished) {
+      _liveActivityShown = false;
+      unawaited(
+        widget.liveActivity.end(
+          finalState: state,
+          dismissAfter: const Duration(minutes: 5),
+        ),
+      );
+    } else {
+      unawaited(widget.liveActivity.update(state));
+    }
+  }
+
+  void _onLiveActivityControl(LiveActivityControl control) {
+    switch (control) {
+      case LiveActivityControl.togglePause:
+        _timer.togglePause();
+      case LiveActivityControl.skip:
+        _timer.skip();
+    }
   }
 
   void _onPhaseChanged(Phase? phase) {
@@ -74,35 +134,33 @@ class _TimerScreenState extends State<TimerScreen>
     if (phase == null) unawaited(WakelockPlus.disable());
     final inBackground =
         WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
-    if (inBackground) _notify(phase);
+    if (inBackground && !_liveActivityShown) _notify(phase);
   }
 
   void _notify(Phase? phase) {
-    final config = widget.config;
     if (phase == null) {
       unawaited(
         widget.notifications.show(
           'Workout complete',
-          '${config.rounds * config.intervals} intervals · '
-              '${formatDuration(config.total)}',
+          workoutSummary(widget.config),
         ),
       );
       return;
     }
-    final (position, detail) = _position(phase);
+    final (position, detail) = phasePosition(phase, widget.config);
     unawaited(
       widget.notifications.show(
         '${phase.type.label} · ${formatDuration(phase.duration)}',
         [
           [position, ?detail].join(' · '),
-          _nextLabel(_timer.nextPhase),
+          nextLabel(_timer.nextPhase),
         ].join('\n'),
       ),
     );
   }
 
-  /// Animates the ring and keeps the app alive in the background, but only
-  /// while the timer actually runs.
+  /// Animates the ring while the timer runs, and keeps the app alive in the
+  /// background while it runs or while the Live Activity offers Resume.
   void _syncRunning() {
     final running = _timer.isRunning;
     if (running && !_frames.isActive) {
@@ -110,9 +168,10 @@ class _TimerScreenState extends State<TimerScreen>
     } else if (!running && _frames.isActive) {
       _frames.stop();
     }
-    if (running != _keepingAlive) {
-      _keepingAlive = running;
-      unawaited(widget.sounds.keepAlive(running));
+    final keepAlive = running || (_liveActivityShown && !_timer.isFinished);
+    if (keepAlive != _keepingAlive) {
+      _keepingAlive = keepAlive;
+      unawaited(widget.sounds.keepAlive(keepAlive));
     }
   }
 
@@ -148,6 +207,9 @@ class _TimerScreenState extends State<TimerScreen>
     unawaited(WakelockPlus.disable());
     if (_keepingAlive) unawaited(widget.sounds.keepAlive(false));
     unawaited(widget.notifications.clear());
+    widget.liveActivity.onControl = null;
+    // Also clears a finished workout's activity still on the lock screen.
+    unawaited(widget.liveActivity.end());
     _lifecycle.dispose();
     _timer.dispose();
     _frames.dispose();
@@ -189,7 +251,7 @@ class _TimerScreenState extends State<TimerScreen>
   Widget _buildRunning(Phase phase) {
     final text = Theme.of(context).textTheme;
     final paused = !_timer.isRunning;
-    final (title, subtitle) = _position(phase);
+    final (title, subtitle) = phasePosition(phase, widget.config);
     return Column(
       children: [
         _TopBar(
@@ -245,7 +307,7 @@ class _TimerScreenState extends State<TimerScreen>
           ),
         ),
         Text(
-          _nextLabel(_timer.nextPhase),
+          nextLabel(_timer.nextPhase),
           style: text.titleMedium?.copyWith(color: Colors.white70),
         ),
         const SizedBox(height: 28),
@@ -277,29 +339,6 @@ class _TimerScreenState extends State<TimerScreen>
     );
   }
 
-  /// Where in the workout [phase] is, as a title and optional subtitle.
-  (String, String?) _position(Phase phase) {
-    final config = widget.config;
-    final round = 'Round ${phase.round} / ${config.rounds}';
-    final interval = config.intervals > 1
-        ? 'Interval ${phase.interval} / ${config.intervals}'
-        : null;
-    return switch (phase.type) {
-      PhaseType.warmup => ('Get ready', null),
-      PhaseType.work || PhaseType.rest => (round, interval),
-      PhaseType.roundRest => (round, 'Round complete'),
-    };
-  }
-
-  String _nextLabel(Phase? next) {
-    if (next == null) return 'Last one!';
-    final time = formatDuration(next.duration);
-    final name = next.type == PhaseType.work && next.interval == 1
-        ? 'Round ${next.round}'
-        : next.type.label;
-    return 'Next: $name · $time';
-  }
-
   Widget _buildDone() {
     final text = Theme.of(context).textTheme;
     final config = widget.config;
@@ -319,8 +358,7 @@ class _TimerScreenState extends State<TimerScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            '${config.rounds * config.intervals} intervals · '
-            '${formatDuration(config.total)}',
+            workoutSummary(config),
             style: text.titleLarge?.copyWith(color: Colors.white70),
           ),
           const Spacer(),

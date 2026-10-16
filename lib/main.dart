@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'app.dart';
 import 'services/config_store.dart';
+import 'services/live_activity.dart';
 import 'services/sounds.dart';
 import 'services/workout_notifications.dart';
 
@@ -26,6 +27,7 @@ Future<void> main() async {
       onConfigChanged: store.save,
       sounds: sounds,
       notifications: notifications,
+      liveActivity: PlatformLiveActivity(),
     ),
   );
 }

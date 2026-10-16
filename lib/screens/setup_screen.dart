@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/phase.dart';
 import '../models/workout_config.dart';
+import '../services/live_activity.dart';
 import '../services/sounds.dart';
 import '../services/workout_notifications.dart';
 import '../theme.dart';
@@ -15,12 +16,14 @@ class SetupScreen extends StatefulWidget {
     required this.onConfigChanged,
     required this.sounds,
     required this.notifications,
+    required this.liveActivity,
   });
 
   final WorkoutConfig initialConfig;
   final ValueChanged<WorkoutConfig> onConfigChanged;
   final Sounds sounds;
   final WorkoutNotifications notifications;
+  final LiveActivity liveActivity;
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -99,6 +102,7 @@ class _SetupScreenState extends State<SetupScreen> {
           config: _config,
           sounds: widget.sounds,
           notifications: widget.notifications,
+          liveActivity: widget.liveActivity,
         ),
       ),
     );
