@@ -28,7 +28,7 @@ class LiveActivityState {
       return LiveActivityState(
         phase: 'done',
         label: 'Workout complete',
-        position: workoutSummary(timer.config),
+        position: workoutSummary(timer.config, timer.activeTime),
         next: '',
         phaseStart: now,
         phaseEnd: now,

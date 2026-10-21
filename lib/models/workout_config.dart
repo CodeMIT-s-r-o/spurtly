@@ -82,6 +82,37 @@ class WorkoutConfig {
     );
   }
 
+  Map<String, Object> toJson() => {
+    'warmup': warmup.inSeconds,
+    'work': work.inSeconds,
+    'rest': rest.inSeconds,
+    'intervals': intervals,
+    'rounds': rounds,
+    'roundRest': roundRest.inSeconds,
+  };
+
+  /// Missing or malformed fields fall back to [defaults].
+  factory WorkoutConfig.fromJson(Map<String, Object?> json) {
+    const d = defaults;
+    int? integer(String key) => switch (json[key]) {
+      final int value => value,
+      _ => null,
+    };
+    Duration seconds(String key, Duration fallback) {
+      final value = integer(key);
+      return value == null ? fallback : Duration(seconds: value);
+    }
+
+    return WorkoutConfig(
+      warmup: seconds('warmup', d.warmup),
+      work: seconds('work', d.work),
+      rest: seconds('rest', d.rest),
+      intervals: integer('intervals') ?? d.intervals,
+      rounds: integer('rounds') ?? d.rounds,
+      roundRest: seconds('roundRest', d.roundRest),
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       other is WorkoutConfig &&

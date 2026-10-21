@@ -14,5 +14,9 @@ void main() {
     );
     expect(workoutSummary(single), '1 interval · 0:30');
     expect(workoutSummary(single.copyWith(rounds: 2)), '2 intervals · 1:00');
+    expect(
+      workoutSummary(single, const Duration(seconds: 21, milliseconds: 600)),
+      '1 interval · 0:22',
+    );
   });
 }

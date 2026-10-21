@@ -10,13 +10,19 @@ run with the phone locked on the floor.
 
 ## Features
 
-- **Workout setup:** warm-up, work, rest, intervals per round, rounds and an
-  optional longer rest between rounds. The last setup is remembered.
+- **Saved workouts:** start from three presets (HIIT 1:1, HIIT 2:1, Tabata),
+  edit them, restore them, or create, rename and delete your own. Each workout
+  has a warm-up, work, rest, intervals per round, rounds and an optional
+  longer rest between rounds. Start one straight from the list with its play
+  button.
 - **Timer:** full-screen color per phase, countdown ring, round and interval
   position, what comes next, pause and skip.
 - **Sound cues:** a rising chime when work starts, a falling chime when rest
   starts, a short arpeggio at the end and 3-2-1 pips before each phase ends.
-  Cues mix with music from other apps instead of pausing it.
+  Cues mix with music from other apps instead of pausing it. Sounds, the
+  countdown and a vibration on phase changes can each be turned off in
+  Settings.
+- **Done screen:** the actual workout time, without pauses or skipped phases.
 - **Live Activity (iOS 17+):** the current phase, a live countdown and its
   progress on the lock screen and in the Dynamic Island, with **Pause/Resume**
   and **Skip** buttons that control the timer without opening the app.
@@ -56,15 +62,16 @@ lib/
   main.dart                 Startup: loads settings, audio and notifications
   app.dart                  MaterialApp and theme
   theme.dart                Colors per phase, formatting helpers
-  models/                   WorkoutConfig (setup) and Phase (one timed segment)
+  models/                   WorkoutConfig, SavedWorkout, presets, AppSettings
+                            and Phase (one timed segment)
   timer/workout_timer.dart  Runs the phases; time comes from a clock, not ticks
-  screens/                  Setup screen and timer screen
+  screens/                  Workout list, workout editor, settings and timer
   timer/phase_text.dart     "Round 2 / 3", "Next: Rest · 0:15" and similar texts
   services/
     sounds.dart                 Cue playback and the background keep-alive loop
     live_activity.dart          Live Activity state and its method channel
     workout_notifications.dart  Fallback lock-screen notification
-    config_store.dart           Saves the last setup
+    workout_library.dart        Saved workouts and settings, stored as JSON
   widgets/stepper_row.dart  − / + row with hold-to-repeat
 ios/
   Runner/LiveActivityChannel.swift  Starts/updates/ends the activity for Dart

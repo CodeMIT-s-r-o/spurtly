@@ -53,10 +53,24 @@ ThemeData buildTheme() {
         primary: AppColors.coral,
         onPrimary: AppColors.onCoral,
         surface: AppColors.background,
+        // Menus, dialogs and sheets in the app's navy instead of tones
+        // derived from the coral seed.
+        surfaceContainerLowest: const Color(0xFF0C1020),
+        surfaceContainerLow: const Color(0xFF161B2E),
+        surfaceContainer: AppColors.surface,
+        surfaceContainerHigh: const Color(0xFF232A44),
+        surfaceContainerHighest: AppColors.stepper,
       );
   return ThemeData(
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.background,
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: AppColors.stepper,
+      contentTextStyle: const TextStyle(color: Colors.white),
+      actionTextColor: AppColors.coral,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
   );
 }
 

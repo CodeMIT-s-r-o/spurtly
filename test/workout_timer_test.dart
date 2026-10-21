@@ -187,6 +187,19 @@ void main() {
       expect(countdown, isEmpty);
     });
 
+    test('active time leaves out pauses and skipped time', () {
+      timer.start();
+      advance(4);
+      timer.pause();
+      advance(100); // paused
+      timer.resume();
+      advance(2);
+      timer.skip(); // jumps over the remaining 4 s of the warm-up
+      advance(30);
+      expect(timer.activeTime, const Duration(seconds: 4 + 2 + 30));
+      expect(timer.elapsed, const Duration(seconds: 10 + 30));
+    });
+
     test('progress runs from 0 to 1 within a phase', () {
       timer.start();
       expect(timer.phaseProgress, 0);

@@ -45,6 +45,9 @@ class WorkoutTimer extends ChangeNotifier {
 
   /// Elapsed time accumulated up to the last pause or skip.
   Duration _banked = Duration.zero;
+
+  /// Phase time jumped over with [skip], which [activeTime] leaves out.
+  Duration _skipped = Duration.zero;
   Duration? _runningSince;
   int _index = 0;
   int _shownSecond = -1;
@@ -81,6 +84,10 @@ class WorkoutTimer extends ChangeNotifier {
   Duration get totalRemaining =>
       isFinished ? Duration.zero : _nonNegative(_phaseEnds.last - elapsed);
 
+  /// Time actually spent working out: [elapsed] without pauses or skipped
+  /// phase time.
+  Duration get activeTime => elapsed - _skipped;
+
   /// Whole seconds left in the workout, rounded up like [phaseSecondsLeft].
   int get totalSecondsLeft => (totalRemaining.inMicroseconds / 1e6).ceil();
 
@@ -110,6 +117,7 @@ class WorkoutTimer extends ChangeNotifier {
   /// Jumps to the start of the next phase, keeping the paused state.
   void skip() {
     if (!_started || isFinished) return;
+    _skipped += _phaseEnds[_index] - elapsed;
     _banked = _phaseEnds[_index];
     if (isRunning) _runningSince = _clock();
     tick();

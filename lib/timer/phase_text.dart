@@ -26,9 +26,10 @@ String nextLabel(Phase? next) {
   return 'Next: $name · $time';
 }
 
-/// "12 intervals · 11:15".
-String workoutSummary(WorkoutConfig config) {
+/// "12 intervals · 11:15", with [time] defaulting to the planned total.
+String workoutSummary(WorkoutConfig config, [Duration? time]) {
   final count = config.rounds * config.intervals;
+  final seconds = ((time ?? config.total).inMilliseconds / 1000).round();
   return '$count ${count == 1 ? 'interval' : 'intervals'} · '
-      '${formatDuration(config.total)}';
+      '${formatDuration(Duration(seconds: seconds))}';
 }

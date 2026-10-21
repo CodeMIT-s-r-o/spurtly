@@ -3,13 +3,16 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../models/app_settings.dart';
 import '../models/phase.dart';
+import '../models/saved_workout.dart';
 import '../models/workout_config.dart';
+import '../services/app_services.dart';
 import '../services/live_activity.dart';
 import '../services/sounds.dart';
-import '../services/workout_notifications.dart';
 import '../theme.dart';
 import '../timer/phase_text.dart';
 import '../timer/workout_timer.dart';
@@ -17,16 +20,14 @@ import '../timer/workout_timer.dart';
 class TimerScreen extends StatefulWidget {
   const TimerScreen({
     super.key,
-    required this.config,
-    required this.sounds,
-    required this.notifications,
-    required this.liveActivity,
+    required this.workout,
+    required this.settings,
+    required this.services,
   });
 
-  final WorkoutConfig config;
-  final Sounds sounds;
-  final WorkoutNotifications notifications;
-  final LiveActivity liveActivity;
+  final SavedWorkout workout;
+  final AppSettings settings;
+  final AppServices services;
 
   @override
   State<TimerScreen> createState() => _TimerScreenState();
@@ -35,10 +36,13 @@ class TimerScreen extends StatefulWidget {
 class _TimerScreenState extends State<TimerScreen>
     with SingleTickerProviderStateMixin {
   late final WorkoutTimer _timer = WorkoutTimer(
-    widget.config,
+    _config,
     onPhaseChanged: _onPhaseChanged,
-    onCountdown: (_) => unawaited(widget.sounds.play(Cue.countdown)),
+    onCountdown: _onCountdown,
   );
+
+  WorkoutConfig get _config => widget.workout.config;
+  AppServices get _services => widget.services;
 
   /// Bumped every frame while running so the ring sweeps smoothly; the rest
   /// of the screen only rebuilds when the timer notifies.
@@ -63,12 +67,12 @@ class _TimerScreenState extends State<TimerScreen>
     _timer
       ..addListener(_syncRunning)
       ..addListener(_syncLiveActivity);
-    widget.liveActivity.onControl = _onLiveActivityControl;
+    _services.liveActivity.onControl = _onLiveActivityControl;
     _lifecycle = AppLifecycleListener(
       onHide: () {
         if (_timer.isRunning && !_liveActivityShown) _notify(_timer.phase);
       },
-      onShow: () => unawaited(widget.notifications.clear()),
+      onShow: () => unawaited(_services.notifications.clear()),
     );
     // Keep the timer in view while the phone lies on the floor.
     unawaited(WakelockPlus.enable());
@@ -77,18 +81,18 @@ class _TimerScreenState extends State<TimerScreen>
   }
 
   Future<void> _startLiveActivity() async {
-    final shown = await widget.liveActivity.start(
+    final shown = await _services.liveActivity.start(
       LiveActivityState.of(_timer, DateTime.now()),
     );
     if (!shown) return;
     if (!mounted) {
-      unawaited(widget.liveActivity.end());
+      unawaited(_services.liveActivity.end());
       return;
     }
     _liveActivityShown = true;
     // The app may have gone to the background while the activity was
     // starting and posted the fallback notification; the activity replaces it.
-    unawaited(widget.notifications.clear());
+    unawaited(_services.notifications.clear());
     _liveActivityKey = (_timer.phase, _timer.isRunning);
     _syncRunning();
     _syncLiveActivity(); // In case something changed while it was starting.
@@ -103,13 +107,13 @@ class _TimerScreenState extends State<TimerScreen>
     if (_timer.isFinished) {
       _liveActivityShown = false;
       unawaited(
-        widget.liveActivity.end(
+        _services.liveActivity.end(
           finalState: state,
           dismissAfter: const Duration(minutes: 5),
         ),
       );
     } else {
-      unawaited(widget.liveActivity.update(state));
+      unawaited(_services.liveActivity.update(state));
     }
   }
 
@@ -130,26 +134,37 @@ class _TimerScreenState extends State<TimerScreen>
       PhaseType.rest || PhaseType.roundRest => Cue.rest,
       null => Cue.finish,
     };
-    if (cue != null) unawaited(widget.sounds.play(cue));
+    if (cue != null) {
+      if (widget.settings.sounds) unawaited(_services.sounds.play(cue));
+      // Haptics only work while the app is on screen.
+      if (widget.settings.vibration) unawaited(HapticFeedback.heavyImpact());
+    }
     if (phase == null) unawaited(WakelockPlus.disable());
     final inBackground =
         WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
     if (inBackground && !_liveActivityShown) _notify(phase);
   }
 
+  void _onCountdown(int secondsLeft) {
+    final settings = widget.settings;
+    if (!settings.countdown) return;
+    if (settings.sounds) unawaited(_services.sounds.play(Cue.countdown));
+    if (settings.vibration) unawaited(HapticFeedback.lightImpact());
+  }
+
   void _notify(Phase? phase) {
     if (phase == null) {
       unawaited(
-        widget.notifications.show(
+        _services.notifications.show(
           'Workout complete',
-          workoutSummary(widget.config),
+          workoutSummary(_config, _timer.activeTime),
         ),
       );
       return;
     }
-    final (position, detail) = phasePosition(phase, widget.config);
+    final (position, detail) = phasePosition(phase, _config);
     unawaited(
-      widget.notifications.show(
+      _services.notifications.show(
         '${phase.type.label} · ${formatDuration(phase.duration)}',
         [
           [position, ?detail].join(' · '),
@@ -171,7 +186,7 @@ class _TimerScreenState extends State<TimerScreen>
     final keepAlive = running || (_liveActivityShown && !_timer.isFinished);
     if (keepAlive != _keepingAlive) {
       _keepingAlive = keepAlive;
-      unawaited(widget.sounds.keepAlive(keepAlive));
+      unawaited(_services.sounds.keepAlive(keepAlive));
     }
   }
 
@@ -205,11 +220,11 @@ class _TimerScreenState extends State<TimerScreen>
   @override
   void dispose() {
     unawaited(WakelockPlus.disable());
-    if (_keepingAlive) unawaited(widget.sounds.keepAlive(false));
-    unawaited(widget.notifications.clear());
-    widget.liveActivity.onControl = null;
+    if (_keepingAlive) unawaited(_services.sounds.keepAlive(false));
+    unawaited(_services.notifications.clear());
+    _services.liveActivity.onControl = null;
     // Also clears a finished workout's activity still on the lock screen.
-    unawaited(widget.liveActivity.end());
+    unawaited(_services.liveActivity.end());
     _lifecycle.dispose();
     _timer.dispose();
     _frames.dispose();
@@ -251,7 +266,7 @@ class _TimerScreenState extends State<TimerScreen>
   Widget _buildRunning(Phase phase) {
     final text = Theme.of(context).textTheme;
     final paused = !_timer.isRunning;
-    final (title, subtitle) = phasePosition(phase, widget.config);
+    final (title, subtitle) = phasePosition(phase, _config);
     return Column(
       children: [
         _TopBar(
@@ -341,7 +356,6 @@ class _TimerScreenState extends State<TimerScreen>
 
   Widget _buildDone() {
     final text = Theme.of(context).textTheme;
-    final config = widget.config;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -358,8 +372,17 @@ class _TimerScreenState extends State<TimerScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            workoutSummary(config),
-            style: text.titleLarge?.copyWith(color: Colors.white70),
+            widget.workout.name,
+            style: text.titleLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Actual time: pauses and skipped phases don't count.
+          Text(
+            workoutSummary(_config, _timer.activeTime),
+            style: text.titleMedium?.copyWith(color: Colors.white70),
           ),
           const Spacer(),
           FilledButton(

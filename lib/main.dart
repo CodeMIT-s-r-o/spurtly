@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app.dart';
-import 'services/config_store.dart';
+import 'services/app_services.dart';
 import 'services/live_activity.dart';
 import 'services/sounds.dart';
+import 'services/workout_library.dart';
 import 'services/workout_notifications.dart';
 
 Future<void> main() async {
@@ -14,20 +15,20 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
-  final store = ConfigStore();
   final sounds = AssetSounds();
   unawaited(sounds.init());
   final notifications = LocalWorkoutNotifications();
   await notifications.init();
-  final config = await store.load();
+  final library = await LibraryStore().load();
 
   runApp(
     SpurtlyApp(
-      initialConfig: config,
-      onConfigChanged: store.save,
-      sounds: sounds,
-      notifications: notifications,
-      liveActivity: PlatformLiveActivity(),
+      library: library,
+      services: AppServices(
+        sounds: sounds,
+        notifications: notifications,
+        liveActivity: PlatformLiveActivity(),
+      ),
     ),
   );
 }
