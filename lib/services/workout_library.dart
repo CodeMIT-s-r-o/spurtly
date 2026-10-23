@@ -8,24 +8,32 @@ import '../models/presets.dart';
 import '../models/saved_workout.dart';
 import '../models/workout_config.dart';
 
-/// The user's saved workouts and settings. Every change is handed to
-/// [onWorkoutsChanged] / [onSettingsChanged] to be persisted.
+/// The user's saved workouts, settings and the free screen's setup. Every
+/// change is handed to [onWorkoutsChanged] / [onSettingsChanged] /
+/// [onQuickConfigChanged] to be persisted.
 class WorkoutLibrary extends ChangeNotifier {
   WorkoutLibrary({
     required List<SavedWorkout> workouts,
     required this._settings,
+    this._quickConfig = WorkoutConfig.defaults,
     this.onWorkoutsChanged,
     this.onSettingsChanged,
+    this.onQuickConfigChanged,
   }) : _workouts = List.of(workouts);
 
   final ValueChanged<List<SavedWorkout>>? onWorkoutsChanged;
   final ValueChanged<AppSettings>? onSettingsChanged;
+  final ValueChanged<WorkoutConfig>? onQuickConfigChanged;
 
   final List<SavedWorkout> _workouts;
   AppSettings _settings;
+  WorkoutConfig _quickConfig;
 
   List<SavedWorkout> get workouts => List.unmodifiable(_workouts);
   AppSettings get settings => _settings;
+
+  /// What the free screen was last set to; it has no saved workouts.
+  WorkoutConfig get quickConfig => _quickConfig;
 
   SavedWorkout? byId(String id) {
     for (final workout in _workouts) {
@@ -52,12 +60,12 @@ class WorkoutLibrary extends ChangeNotifier {
     _workoutsChanged();
   }
 
-  /// Adds a workout with default values and a name not used yet.
-  SavedWorkout create() {
+  /// Adds a workout with [config] and a name not used yet.
+  SavedWorkout create({WorkoutConfig config = WorkoutConfig.defaults}) {
     final workout = SavedWorkout(
       id: _newId(),
       name: _unusedName('My workout'),
-      config: WorkoutConfig.defaults,
+      config: config,
     );
     save(workout);
     return workout;
@@ -115,6 +123,13 @@ class WorkoutLibrary extends ChangeNotifier {
     notifyListeners();
   }
 
+  set quickConfig(WorkoutConfig config) {
+    if (config == _quickConfig) return;
+    _quickConfig = config;
+    onQuickConfigChanged?.call(config);
+    notifyListeners();
+  }
+
   void _workoutsChanged() {
     onWorkoutsChanged?.call(workouts);
     notifyListeners();
@@ -129,11 +144,13 @@ class LibraryStore {
 
   static const _workoutsKey = 'workouts_v1';
   static const _settingsKey = 'settings_v1';
+  static const _quickConfigKey = 'quick_config_v1';
 
   /// The saved library; the presets when nothing has been saved yet.
   Future<WorkoutLibrary> load() async {
     var workouts = presetWorkouts;
     var settings = const AppSettings();
+    var quickConfig = WorkoutConfig.defaults;
     try {
       final storedWorkouts = await _prefs.getString(_workoutsKey);
       if (storedWorkouts != null) {
@@ -146,14 +163,22 @@ class LibraryStore {
       if (storedSettings != null) {
         settings = AppSettings.fromJson(jsonDecode(storedSettings));
       }
+      final storedQuickConfig = await _prefs.getString(_quickConfigKey);
+      if (storedQuickConfig != null) {
+        quickConfig = WorkoutConfig.fromJson(
+          jsonDecode(storedQuickConfig) as Map<String, Object?>,
+        );
+      }
     } catch (error) {
       debugPrint('Could not load the workout library: $error');
     }
     return WorkoutLibrary(
       workouts: workouts,
       settings: settings,
+      quickConfig: quickConfig,
       onWorkoutsChanged: _saveWorkouts,
       onSettingsChanged: _saveSettings,
+      onQuickConfigChanged: _saveQuickConfig,
     );
   }
 
@@ -162,6 +187,9 @@ class LibraryStore {
 
   Future<void> _saveSettings(AppSettings settings) =>
       _write(_settingsKey, jsonEncode(settings.toJson()));
+
+  Future<void> _saveQuickConfig(WorkoutConfig config) =>
+      _write(_quickConfigKey, jsonEncode(config.toJson()));
 
   Future<void> _write(String key, String value) async {
     try {

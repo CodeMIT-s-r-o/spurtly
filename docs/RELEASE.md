@@ -35,7 +35,8 @@ Rozhodnutia a práca, ktoré by mali byť hotové skôr, než pôjdeme do obchod
   - V obchode sa ukáže meno firmy, nie tvoje.
   - Organizačný účet v Google Play **nemusí** pred prvým vydaním absolvovať test s 12 testermi počas 14 dní (pozri 4.7).
 - [x] **Model:** zadarmo + jednorazové odomknutie Pro, bez reklám a bez predplatného.
-- [ ] **Rozsah Pro a cena:** návrh je v 6.1 a 6.2, treba ho potvrdiť.
+- [x] **Rozsah Pro:** zadarmo jedna obrazovka s časovačom, knižnica tréningov a nastavenia v Pro (6.1, plán [FREE_TIER.md](FREE_TIER.md)).
+- [ ] **Cena:** návrh je v 6.2, treba ju potvrdiť.
 - [x] **iPad:** v1 je **len pre iPhone** (`TARGETED_DEVICE_FAMILY = 1` v celom Xcode projekte), takže App Store nebude chcieť iPad screenshoty. UI je robené na telefón na výšku. Na iPade sa appka dá spustiť v iPhone režime.
 - [ ] **Jazyky obchodu:** appka je po anglicky, takže listing v angličtine. Slovenčinu môžeme pridať neskôr.
 
@@ -126,9 +127,9 @@ flutter build ipa --release
 ### 3.6 Odoslanie na review
 1. V App Store Connect vytvor verziu 1.0. Vyber build a vyplň popis, kľúčové slová, screenshoty a „What's New“ (pri v1 netreba).
 2. **App Review Information → Notes**. Treba vopred vysvetliť background audio a Live Activity. Návrh textu:
-   > Spurtly is an interval timer. During a workout it plays audible cues (work, rest, finish and a 3-2-1 countdown), including while the screen is locked, which is why it uses the audio background mode. The audio session is only active while a workout is running. The Live Activity shows the current phase and lets the user pause, resume or skip a phase from the lock screen. To test: tap the play button on "Tabata", lock the phone and listen for the cues; use the Pause and Skip buttons on the lock screen. No account or login is needed.
+   > Spurtly is an interval timer. During a workout it plays audible cues (work, rest, finish and a 3-2-1 countdown), including while the screen is locked, which is why it uses the audio background mode. The audio session is only active while a workout is running. The Live Activity shows the current phase and lets the user pause, resume or skip a phase from the lock screen. To test: tap Start, lock the phone and listen for the cues. No account or login is needed.
    >
-   > Spurtly Pro (spurtly_pro) is a one-time, non-consumable In-App Purchase that unlocks unlimited custom workouts and the Live Activity lock-screen controls. Its screen opens from Settings › Spurtly Pro, or when creating a fourth workout; it shows the price, a Buy button, Restore Purchases and Redeem Code.
+   > The free version is a complete interval timer on a single screen. Spurtly Pro (spurtly_pro) is a one-time, non-consumable In-App Purchase that adds a library of saved workouts (HIIT and Tabata presets plus the user's own), signal settings and the Live Activity lock-screen controls. Its screen opens from the Pro button at the top right or from Save; it shows the price, a Buy button, Restore Purchases and Redeem Code. To try the lock-screen controls, buy Pro in the sandbox, tap the play button on "Tabata", lock the phone and use the Pause and Skip buttons.
 3. Riziko: Apple niekedy zamietne appku podľa pravidla 2.5.4, ak pozadie využíva len kvôli tichému zvuku. Naše zvuky sú však počuteľné a sú hlavnou funkciou appky, a presne to treba v poznámkach zdôrazniť. Ak by aj tak zamietli, odpoveď je v Resolution Center s rovnakým vysvetlením, prípadne s videom.
 4. Review trvá obvykle 1–2 dni. Vydanie môže byť automatické, manuálne alebo postupné (phased release na 7 dní).
 
@@ -215,17 +216,15 @@ Názov, krátky a plný popis, ikona 512 × 512, feature graphic 1024 × 500 a s
 - **Description (spoločný základ):**
   > Spurtly is a clean, focused interval timer for HIIT, Tabata and circuit training.
   >
-  > • Start in one tap with HIIT 1:1, HIIT 2:1 or Tabata — or build your own: warm-up, work, rest, intervals per round, rounds and an optional longer rest between rounds.
+  > • Set up your workout on one screen: warm-up, work, rest, intervals per round, rounds and an optional longer rest between rounds — and start.
   > • Distinct sounds for work, rest and the finish, plus a 3-2-1 countdown. Cues play over your music and keep going with the screen locked.
   > • Big, colour-coded countdown you can read from across the room.
-  > • Control the timer from the lock screen and Dynamic Island with Live Activities (iPhone).
-  > • Duplicate, rename and fine-tune your workouts; everything is saved on your phone.
-  > • No account, no ads, no tracking.
+  > • No account, no ads, no tracking. Everything stays on your phone.
   >
   > Spurtly Pro — a one-time purchase, no subscription:
-  > • Unlimited custom workouts, duplicate and tweak any of them.
+  > • Saved workouts: HIIT 1:1, HIIT 2:1 and Tabata ready to go, plus as many of your own as you like. Start any of them with one tap; duplicate, rename and fine-tune them.
   > • Lock-screen and Dynamic Island controls: pause, resume or skip without unlocking (iPhone), notification controls (Android).
-  > • Every future Pro feature included.
+  > • Signal settings: sounds, the 3-2-1 countdown and vibration.
 
 ### Grafika
 | | App Store | Google Play |
@@ -239,8 +238,8 @@ Názov, krátky a plný popis, ikona 512 × 512, feature graphic 1024 × 500 a s
 - iOS: simulátor **iPhone 17 Pro Max** (6,9"), screenshot cez `xcrun simctl io booted screenshot`.
 - Android: emulátor Pixel cez `adb exec-out screencap -p`.
 - **Odporúčané zábery:**
-  1. zoznam tréningov,
-  2. editor tréningu,
+  1. bezplatná obrazovka s nastavením časov,
+  2. zoznam uložených tréningov (Pro),
   3. časovač vo fáze Work,
   4. časovač vo fáze Rest,
   5. Live Activity na zamknutej obrazovke,
@@ -251,13 +250,16 @@ Názov, krátky a plný popis, ikona 512 × 512, feature graphic 1024 × 500 a s
 
 ## 6. Spurtly Pro – jednorazové odomknutie
 
-### 6.1 Čo je zadarmo a čo v Pro (návrh, treba potvrdiť)
+### 6.1 Čo je zadarmo a čo v Pro
+Podrobnosti a rozhodnutia: [FREE_TIER.md](FREE_TIER.md).
+
 | Zadarmo | Spurtly Pro (jednorazovo) |
 |---|---|
-| 3 tréningy (HIIT 1:1, HIIT 2:1, Tabata), dajú sa ľubovoľne upravovať | **Neobmedzený počet vlastných tréningov**, duplikovanie |
-| Celý časovač: warm-up, intervaly, kolá, rest medzi kolami | **Live Activity a Dynamic Island** s Pause/Resume a Skip (iPhone) |
-| Zvuky, 3-2-1, vibrácie, zvuky aj pri zamknutej obrazovke | **Notifikácia s tlačidlami** Pause a Skip (Android) |
-| Základná notifikácia s aktuálnou fázou | **Všetky budúce Pro funkcie**: história, štatistiky, Apple Health / Health Connect |
+| Jedna obrazovka: warm-up, work, rest, intervaly, kolá, rest medzi kolami, Start. Posledné hodnoty si pamätá. | **Uložené tréningy:** predvoľby HIIT 1:1, HIIT 2:1, Tabata a neobmedzene vlastných, premenovanie, duplikovanie |
+| Celý časovač s pauzou, skipom a obrazovkou Done | **Live Activity a Dynamic Island** s Pause/Resume a Skip (iPhone) |
+| Zvuky, 3-2-1, vibrácie, zvuky aj pri zamknutej obrazovke, prepínač zvuku | **Notifikácia s tlačidlami** Pause a Skip a čip v stavovom riadku (Android) |
+| Bežná notifikácia s aktuálnou fázou, foreground služba na Androide | **Nastavenia signálov:** zvuky, 3-2-1, vibrácie |
+| | Neskôr história a štatistiky (do ponuky ich pridáme, až keď budú hotové) |
 
 **Princíp:** bezplatná verzia je plnohodnotný časovač, takže ľudia ju nebudú hodnotiť ako „orezanú“. Pro pridáva pohodlie a prispôsobenie.
 
@@ -297,16 +299,17 @@ Bez aktívnej Paid Applications Agreement sa produkty nenačítajú ani v sandbo
   - **Restore Purchases**, ktoré Apple pri jednorazových nákupoch vyžaduje,
   - **Redeem Code** na uplatnenie kódu z 6.6.
 - **Kde sa ponuka ukáže:**
-  - pri „New workout“ alebo „Duplicate“, keď už má používateľ 3 tréningy,
+  - na bezplatnej obrazovke tlačidlo **Pro** vpravo hore a **Save · PRO** pri Start,
   - Live Activity na iPhone sa bez Pro nespustí, appka namiesto nej použije bežnú notifikáciu,
   - tlačidlá v androidovej notifikácii len s Pro,
-  - v nastaveniach riadok „Spurtly Pro“ so stavom, kúpou, obnovením a kódom.
+  - s Pro v nastaveniach riadok „Spurtly Pro“ so stavom.
+- **Po kúpe** sa appka sama prepne na knižnicu tréningov. Ak bolo na bezplatnej obrazovke iné nastavenie než predvolené, pridá sa ako „My workout“. Po vrátení peňazí sa vráti bezplatná obrazovka a uložené tréningy ostanú v telefóne.
 - **Nesmie sa:** vlastné odomykacie kódy, skryté prepínače alebo odomknutie mimo obchodu. Porušuje to Apple pravidlo 3.1.1 aj platobné pravidlá Google Play. Zadarmo sa dá Pro dať len cez mechanizmy obchodov (6.6).
 - **Známe riziko:** na fóre Apple sa v roku 2026 objavili hlásenia, že `in_app_purchase` 3.2.x s Xcode 26.4 niekedy po nákupe nevráti nárok. Preto otestovať na reálnom iPhone cez TestFlight a mať funkčné tlačidlo Restore Purchases.
 - **Kde to je v kóde:**
   - `lib/services/pro.dart` (`StorePro`): produkt, nákup, obnovenie, kód, lokálna cache `pro_v1` a kontrola v obchode pri štarte. Na iPhone kontrola pri štarte číta `Transaction.currentEntitlements`, takže sa nepýta na Apple ID. Až tlačidlo Restore purchase robí `AppStore.sync()`.
   - `lib/screens/pro_sheet.dart`: obrazovka Spurtly Pro.
-  - Obmedzenia: `home_screen.dart` (nový a duplikovaný tréning), `timer_screen.dart` (Live Activity, tlačidlá v notifikácii), `settings_sheet.dart` (riadok Spurtly Pro).
+  - Obmedzenia: `app.dart` (bezplatná obrazovka alebo knižnica), `quick_timer_screen.dart` (bezplatná obrazovka), `start_workout.dart` (nastavenia signálov), `timer_screen.dart` (Live Activity, tlačidlá v notifikácii).
   - Testy: `test/pro_test.dart` (logika nákupu s falošným obchodom), `test/widget_test.dart` (obmedzenia a obrazovka Pro).
 
 ### 6.5 Založenie produktu v obchodoch
@@ -314,7 +317,7 @@ Bez aktívnej Paid Applications Agreement sa produkty nenačítajú ani v sandbo
 1. Type: **Non-Consumable**.
 2. Reference name „Spurtly Pro“, Product ID `spurtly_pro`.
 3. Cena (4,99 €) a dostupnosť.
-4. Lokalizácia: display name „Spurtly Pro“, popis „Unlimited workouts and lock-screen controls“.
+4. Lokalizácia: display name „Spurtly Pro“, popis „Saved workouts and lock-screen controls“.
 5. Review screenshot obrazovky Pro a krátka poznámka pre recenzenta.
 6. **Family Sharing:** odporúčam zapnúť, ľudia to oceňujú. Pri jednorazovom nákupe sa však raz zapnuté už nedá vypnúť.
 7. **Prvý nákup v appke sa musí odoslať na review spolu s verziou appky.** Na stránke verzie ho vyber v sekcii In-App Purchases.

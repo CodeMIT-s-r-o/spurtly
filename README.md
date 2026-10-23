@@ -10,18 +10,19 @@ run with the phone locked on the floor.
 
 ## Features
 
-- **Saved workouts:** start from three presets (HIIT 1:1, HIIT 2:1, Tabata),
-  edit them, restore them, or create, rename and delete your own. Each workout
-  has a warm-up, work, rest, intervals per round, rounds and an optional
-  longer rest between rounds. Start one straight from the list with its play
-  button.
+- **Free: one screen.** Set the warm-up, work, rest, intervals per round,
+  rounds and an optional longer rest between rounds, then start. The last
+  values are remembered; a speaker button mutes the cues.
+- **Saved workouts (Pro):** start from three presets (HIIT 1:1, HIIT 2:1,
+  Tabata), edit them, restore them, or create, rename, duplicate and delete
+  your own. Start one straight from the list with its play button.
 - **Timer:** full-screen color per phase, countdown ring, round and interval
   position, what comes next, pause and skip.
 - **Sound cues:** a rising chime when work starts, a falling chime when rest
   starts, a short arpeggio at the end and 3-2-1 pips before each phase ends.
-  Cues mix with music from other apps instead of pausing it. Sounds, the
-  countdown and a vibration on phase changes can each be turned off in
-  Settings.
+  Cues mix with music from other apps instead of pausing it. With Pro, the
+  sounds, the countdown and a vibration on phase changes can each be turned
+  off in Settings.
 - **Done screen:** the actual workout time, without pauses or skipped phases.
 - **Live Activity (iOS 17+, Pro):** the current phase, a live countdown and
   its progress on the lock screen and in the Dynamic Island, with
@@ -35,10 +36,12 @@ run with the phone locked on the floor.
   a Live Activity (no Pro, older iOS, or turned off), each phase change
   updates a single notification instead; it is removed when the app comes back
   to the foreground.
-- **Spurtly Pro:** a one-time in-app purchase (`spurtly_pro`) that unlocks more
-  than three workouts, duplicating, and the lock-screen controls. Restore and
+- **Spurtly Pro:** a one-time in-app purchase (`spurtly_pro`) that unlocks
+  saved workouts, signal settings and the lock-screen controls. Buying it
+  switches the app from the free screen to the workout library. Restore and
   offer/promo codes are on the Pro screen; see
-  [docs/RELEASE.md](docs/RELEASE.md), chapter 6.
+  [docs/RELEASE.md](docs/RELEASE.md), chapter 6, and
+  [docs/FREE_TIER.md](docs/FREE_TIER.md).
 
 ## Requirements
 
@@ -88,8 +91,8 @@ lib/
   models/                   WorkoutConfig, SavedWorkout, presets, AppSettings
                             and Phase (one timed segment)
   timer/workout_timer.dart  Runs the phases; time comes from a clock, not ticks
-  screens/                  Workout list, workout editor, settings, Pro and
-                            timer
+  screens/                  Free screen, workout list and editor (Pro),
+                            settings, Pro and timer
   timer/phase_text.dart     "Round 2 / 3", "Next: Rest · 0:15" and similar texts
   services/
     sounds.dart                 Cue playback and the background keep-alive loop
@@ -99,6 +102,7 @@ lib/
     workout_notifications.dart  Fallback lock-screen notification
     workout_library.dart        Saved workouts and settings, stored as JSON
   widgets/stepper_row.dart  − / + row with hold-to-repeat
+  widgets/workout_form.dart The − / + rows for a workout, its total and Start
 ios/
   Runner/LiveActivityChannel.swift  Starts/updates/ends the activity for Dart
   Runner/Spurtly.storekit           StoreKit testing config for Xcode runs

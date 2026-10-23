@@ -95,7 +95,7 @@ class _ProTile extends StatelessWidget {
       subtitle: Text(
         unlocked
             ? 'Unlocked. Thank you!'
-            : 'Unlimited workouts and lock-screen controls',
+            : 'Saved workouts, signal settings and lock-screen controls',
       ),
       trailing: unlocked
           ? const Icon(Icons.check_circle_rounded, color: AppColors.teal)

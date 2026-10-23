@@ -4,12 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spurtly/app.dart';
 import 'package:spurtly/models/app_settings.dart';
 import 'package:spurtly/models/presets.dart';
+import 'package:spurtly/models/workout_config.dart';
 import 'package:spurtly/services/app_services.dart';
 import 'package:spurtly/services/live_activity.dart';
 import 'package:spurtly/services/pro.dart';
 import 'package:spurtly/services/sounds.dart';
 import 'package:spurtly/services/workout_library.dart';
+import 'package:spurtly/screens/timer_screen.dart';
 import 'package:spurtly/services/workout_notifications.dart';
+import 'package:spurtly/theme.dart';
 
 class _SilentSounds implements Sounds {
   @override
@@ -59,10 +62,15 @@ class _FakePro extends SpurtlyPro {
   @override
   String? get price => '4,99 €';
 
+  /// A refund, or a purchase made elsewhere.
+  set unlocked(bool unlocked) {
+    _unlocked = unlocked;
+    notifyListeners();
+  }
+
   @override
   Future<ProOutcome> buy() async {
-    _unlocked = true;
-    notifyListeners();
+    unlocked = true;
     return ProOutcome.unlocked;
   }
 
@@ -75,12 +83,23 @@ class _FakePro extends SpurtlyPro {
 
 void main() {
   late WorkoutLibrary library;
+  late _FakePro fakePro;
+
+  setUp(() {
+    // The timer keeps the screen on through wakelock_plus.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMessageHandler(
+          'dev.flutter.pigeon.wakelock_plus_platform_interface.'
+          'WakelockPlusApi.toggle',
+          (_) async => const StandardMessageCodec().encodeMessage([null]),
+        );
+  });
 
   /// [size] is in logical pixels; by default an iPhone, so every row is on
   /// screen.
   Future<void> pumpApp(
     WidgetTester tester, {
-    bool pro = false,
+    required bool pro,
     Size size = const Size(390, 844),
   }) async {
     tester.view
@@ -98,189 +117,238 @@ void main() {
           sounds: _SilentSounds(),
           notifications: _NoNotifications(),
           liveActivity: _NoLiveActivity(),
-          pro: _FakePro(unlocked: pro),
+          pro: fakePro = _FakePro(unlocked: pro),
         ),
       ),
     );
   }
 
-  testWidgets('home lists the three presets', (tester) async {
-    await pumpApp(tester);
-
-    expect(find.text('HIIT 1:1'), findsOneWidget);
-    expect(find.text('HIIT 2:1'), findsOneWidget);
-    expect(find.text('Tabata'), findsOneWidget);
-    expect(find.text('0:20 / 0:10 · 8 × 4 · 20:20'), findsOneWidget);
-  });
-
-  testWidgets('editing a workout saves it and updates its card', (
-    tester,
-  ) async {
-    await pumpApp(tester);
-
-    await tester.tap(find.text('Tabata'));
-    await tester.pumpAndSettle();
-    expect(find.text('Total  20:20', findRichText: true), findsOneWidget);
-
-    await tester.tap(find.bySemanticsLabel('Decrease Rounds'));
+  /// Taps Start (or a card's play button) and lets the timer screen open;
+  /// its ring animates while it runs, so it never settles.
+  Future<void> start(WidgetTester tester, Finder button) async {
+    await tester.tap(button);
     await tester.pump();
-    expect(library.byId('preset-tabata')!.config.rounds, 3);
-    expect(find.text('Total  15:30', findRichText: true), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+  }
 
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
-    expect(find.text('0:20 / 0:10 · 8 × 3 · 15:30'), findsOneWidget);
+  group('free', () {
+    testWidgets('one screen to set up and start a workout', (tester) async {
+      await pumpApp(tester, pro: false);
+
+      expect(find.text('Your workouts'.toUpperCase()), findsNothing);
+      expect(find.byTooltip('Settings'), findsNothing);
+      expect(
+        find.text(
+          'Total  ${formatDuration(WorkoutConfig.defaults.total)}',
+          findRichText: true,
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.bySemanticsLabel('Decrease Rounds'));
+      await tester.pump();
+      expect(library.quickConfig.rounds, WorkoutConfig.defaults.rounds - 1);
+    });
+
+    testWidgets('starts with default signals, except the sound switch', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: false);
+      library.settings = const AppSettings(countdown: false, vibration: false);
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('Mute sounds'));
+      await tester.pump();
+      expect(library.settings.sounds, isFalse);
+
+      await start(tester, find.text('Start'));
+      final timer = tester.widget<TimerScreen>(find.byType(TimerScreen));
+      expect(timer.settings, const AppSettings(sounds: false));
+      expect(timer.name, isNull);
+      expect(timer.config, library.quickConfig);
+    });
+
+    testWidgets('Save offers Pro; buying it opens the workout library', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: false);
+      await tester.tap(find.bySemanticsLabel('Decrease Rounds'));
+      await tester.pump();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Save your workouts and start any of them with one tap.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Unlock for 4,99 €'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tabata'), findsOneWidget);
+      // What was set up on the free screen is kept as a workout.
+      final mine = library.workouts.last;
+      expect(mine.name, 'My workout');
+      expect(mine.config, library.quickConfig);
+    });
+
+    testWidgets('an unchanged free setup is not added as a workout', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: false);
+      fakePro.unlocked = true;
+      await tester.pumpAndSettle();
+
+      expect(library.workouts, presetWorkouts);
+    });
+
+    testWidgets('after a refund the free screen is back, workouts kept', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: true);
+      fakePro.unlocked = false;
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tabata'), findsNothing);
+      expect(find.text('Start'), findsOneWidget);
+      expect(library.workouts, presetWorkouts);
+    });
+
+    testWidgets('Pro offers restore, which reports nothing found', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: false);
+
+      await tester.tap(find.text('Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Restore purchase'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('No earlier purchase found'), findsOneWidget);
+    });
   });
 
-  testWidgets('a new workout can be renamed and deleted', (tester) async {
-    await pumpApp(tester, pro: true);
+  group('Pro', () {
+    testWidgets('home lists the three presets', (tester) async {
+      await pumpApp(tester, pro: true);
 
-    await tester.tap(find.text('New workout'));
-    await tester.pumpAndSettle();
-    expect(find.text('My workout'), findsOneWidget);
+      expect(find.text('HIIT 1:1'), findsOneWidget);
+      expect(find.text('HIIT 2:1'), findsOneWidget);
+      expect(find.text('Tabata'), findsOneWidget);
+      expect(find.text('0:20 / 0:10 · 8 × 4 · 20:20'), findsOneWidget);
+    });
 
-    await tester.tap(find.text('My workout'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Leg day');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(find.text('Leg day'), findsOneWidget);
+    testWidgets('editing a workout saves it and updates its card', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: true);
 
-    await tester.tap(find.byTooltip('More'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Delete'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Tabata'));
+      await tester.pumpAndSettle();
+      expect(find.text('Total  20:20', findRichText: true), findsOneWidget);
 
-    expect(find.text('Leg day'), findsNothing);
-    expect(library.workouts, hasLength(3));
-  });
+      await tester.tap(find.bySemanticsLabel('Decrease Rounds'));
+      await tester.pump();
+      expect(library.byId('preset-tabata')!.config.rounds, 3);
+      expect(find.text('Total  15:30', findRichText: true), findsOneWidget);
 
-  testWidgets('swiping left deletes a workout, Undo brings it back', (
-    tester,
-  ) async {
-    await pumpApp(tester);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('0:20 / 0:10 · 8 × 3 · 15:30'), findsOneWidget);
+    });
 
-    await tester.drag(find.text('HIIT 2:1'), const Offset(-500, 0));
-    await tester.pumpAndSettle();
-    expect(find.text('HIIT 2:1'), findsNothing);
-    expect(find.text('Deleted “HIIT 2:1”'), findsOneWidget);
+    testWidgets('a new workout can be renamed and deleted', (tester) async {
+      await pumpApp(tester, pro: true);
 
-    await tester.tap(find.text('Undo'));
-    await tester.pumpAndSettle();
-    expect(library.workouts.map((w) => w.name), [
-      'HIIT 1:1',
-      'HIIT 2:1',
-      'Tabata',
-    ]);
-  });
+      await tester.tap(find.text('New workout'));
+      await tester.pumpAndSettle();
+      expect(find.text('My workout'), findsOneWidget);
 
-  testWidgets('swiping right duplicates a workout and keeps the original', (
-    tester,
-  ) async {
-    await pumpApp(tester, pro: true);
+      await tester.tap(find.text('My workout'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Leg day');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Leg day'), findsOneWidget);
 
-    await tester.drag(find.text('Tabata'), const Offset(500, 0));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('More'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Tabata'), findsOneWidget);
-    expect(find.text('Tabata copy'), findsOneWidget);
-    expect(library.workouts, hasLength(4));
-  });
+      expect(find.text('Leg day'), findsNothing);
+      expect(library.workouts, hasLength(3));
+    });
 
-  testWidgets('without Pro, a fourth workout offers Pro; buying unlocks it', (
-    tester,
-  ) async {
-    await pumpApp(tester);
-    expect(find.text('PRO'), findsOneWidget);
+    testWidgets('swiping left deletes a workout, Undo brings it back', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: true);
 
-    await tester.tap(find.text('New workout'));
-    await tester.pumpAndSettle();
-    expect(library.workouts, hasLength(3));
-    expect(
-      find.text('The free version keeps 3 workouts. Unlock Pro to add more.'),
-      findsOneWidget,
-    );
+      await tester.drag(find.text('HIIT 2:1'), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(find.text('HIIT 2:1'), findsNothing);
+      expect(find.text('Deleted “HIIT 2:1”'), findsOneWidget);
 
-    await tester.tap(find.text('Unlock for 4,99 €'));
-    await tester.pumpAndSettle();
-    expect(find.text('Unlocked. Thank you for supporting Spurtly!'), findsOne);
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+      expect(library.workouts.map((w) => w.name), [
+        'HIIT 1:1',
+        'HIIT 2:1',
+        'Tabata',
+      ]);
+    });
 
-    await tester.tap(find.text('Done'));
-    await tester.pumpAndSettle();
-    expect(find.text('PRO'), findsNothing);
-    await tester.tap(find.text('New workout'));
-    await tester.pumpAndSettle();
-    expect(library.workouts, hasLength(4));
-  });
+    testWidgets('swiping right duplicates a workout and keeps the original', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: true);
 
-  testWidgets('without Pro, swiping right offers Pro instead of a copy', (
-    tester,
-  ) async {
-    await pumpApp(tester);
+      await tester.drag(find.text('Tabata'), const Offset(500, 0));
+      await tester.pumpAndSettle();
 
-    await tester.drag(find.text('Tabata'), const Offset(500, 0));
-    await tester.pumpAndSettle();
+      expect(find.text('Tabata'), findsOneWidget);
+      expect(find.text('Tabata copy'), findsOneWidget);
+      expect(library.workouts, hasLength(4));
+    });
 
-    expect(find.text('Tabata copy'), findsNothing);
-    expect(find.text('Spurtly Pro'), findsOneWidget);
-  });
+    testWidgets('a saved workout starts with its name and the settings', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: true);
+      library.settings = const AppSettings(countdown: false);
 
-  testWidgets('without Pro, a deleted workout makes room for a new one', (
-    tester,
-  ) async {
-    await pumpApp(tester);
+      await start(tester, find.bySemanticsLabel('Start Tabata'));
+      final timer = tester.widget<TimerScreen>(find.byType(TimerScreen));
+      expect(timer.name, 'Tabata');
+      expect(timer.settings, const AppSettings(countdown: false));
+    });
 
-    await tester.drag(find.text('HIIT 2:1'), const Offset(-500, 0));
-    await tester.pumpAndSettle();
-    expect(find.text('PRO'), findsNothing);
+    testWidgets('settings switch signals off', (tester) async {
+      await pumpApp(tester, pro: true);
 
-    await tester.tap(find.text('New workout'));
-    await tester.pumpAndSettle();
-    expect(find.text('My workout'), findsOneWidget);
-  });
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('3-2-1 countdown'));
+      await tester.pumpAndSettle();
 
-  testWidgets('settings offer Pro, restore reports nothing found', (
-    tester,
-  ) async {
-    await pumpApp(tester);
-
-    await tester.tap(find.byTooltip('Settings'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Spurtly Pro'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Restore purchase'));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('No earlier purchase found'), findsOneWidget);
+      expect(library.settings.countdown, isFalse);
+      expect(library.settings.sounds, isTrue);
+    });
   });
 
   group('on a tablet', () {
     const landscape = Size(1280, 800);
     const portrait = Size(800, 1280);
 
-    setUp(() {
-      // The timer keeps the screen on through wakelock_plus.
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMessageHandler(
-            'dev.flutter.pigeon.wakelock_plus_platform_interface.'
-            'WakelockPlusApi.toggle',
-            (_) async => const StandardMessageCodec().encodeMessage([null]),
-          );
-    });
-
-    Future<void> start(WidgetTester tester, String workout) async {
-      await tester.tap(find.bySemanticsLabel('Start $workout'));
-      // The ring animates while the timer runs, so it never settles.
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
-    }
-
     testWidgets('the list and the editor keep a readable width', (
       tester,
     ) async {
-      await pumpApp(tester, size: landscape);
+      await pumpApp(tester, pro: true, size: landscape);
 
       final card = find
           .ancestor(of: find.text('Tabata'), matching: find.byType(Material))
@@ -295,11 +363,19 @@ void main() {
       expect(tester.getCenter(start).dx, 640);
     });
 
+    testWidgets('the free screen keeps a readable width', (tester) async {
+      await pumpApp(tester, pro: false, size: landscape);
+
+      final start = find.widgetWithText(FilledButton, 'Start');
+      expect(tester.getSize(start).width, 640);
+      expect(tester.getCenter(start).dx, 640);
+    });
+
     testWidgets('in landscape the timer puts its buttons beside the ring', (
       tester,
     ) async {
-      await pumpApp(tester, size: landscape);
-      await start(tester, 'Tabata');
+      await pumpApp(tester, pro: true, size: landscape);
+      await start(tester, find.bySemanticsLabel('Start Tabata'));
 
       final ring = tester.getCenter(find.text('Warm-up'));
       final pause = tester.getCenter(find.bySemanticsLabel('Pause'));
@@ -310,8 +386,8 @@ void main() {
     testWidgets('in portrait the timer keeps its buttons below the ring', (
       tester,
     ) async {
-      await pumpApp(tester, size: portrait);
-      await start(tester, 'Tabata');
+      await pumpApp(tester, pro: true, size: portrait);
+      await start(tester, find.bySemanticsLabel('Start Tabata'));
 
       final ring = tester.getCenter(find.text('Warm-up'));
       final pause = tester.getCenter(find.bySemanticsLabel('Pause'));
@@ -320,23 +396,11 @@ void main() {
     });
 
     testWidgets('a low split-screen window still fits', (tester) async {
-      await pumpApp(tester, size: const Size(1280, 390));
+      await pumpApp(tester, pro: true, size: const Size(1280, 390));
       expect(tester.takeException(), isNull);
 
-      await start(tester, 'HIIT 1:1');
+      await start(tester, find.bySemanticsLabel('Start HIIT 1:1'));
       expect(tester.takeException(), isNull);
     });
-  });
-
-  testWidgets('settings switch signals off', (tester) async {
-    await pumpApp(tester);
-
-    await tester.tap(find.byTooltip('Settings'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('3-2-1 countdown'));
-    await tester.pumpAndSettle();
-
-    expect(library.settings.countdown, isFalse);
-    expect(library.settings.sounds, isTrue);
   });
 }

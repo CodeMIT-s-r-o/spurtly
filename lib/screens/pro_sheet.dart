@@ -73,10 +73,12 @@ class _ProSheetState extends State<_ProSheet> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: widget.pro,
-      builder: (context, _) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: widget.pro.unlocked ? _buildUnlocked() : _buildOffer(),
-      ),
+      builder: (context, _) => widget.pro.unlocked
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: _buildUnlocked(),
+            )
+          : _buildOffer(),
     );
   }
 
@@ -86,113 +88,144 @@ class _ProSheetState extends State<_ProSheet> {
     final price = pro.price;
     final busy = _busy != null;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _Header(subtitle: 'One purchase, yours for good.'),
-        if (widget.reason case final reason?) ...[
-          const SizedBox(height: 20),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.coral.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Text(
-                reason,
-                textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(color: Colors.white),
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 24),
-        const _Feature(
-          icon: Icons.all_inclusive_rounded,
-          title: 'Unlimited workouts',
-          subtitle:
-              'Save and duplicate as many as you like. The free version '
-              'keeps ${SpurtlyPro.freeWorkouts}.',
-        ),
-        if (_iOS)
-          const _Feature(
-            icon: Icons.lock_clock_rounded,
-            title: 'Lock-screen controls',
-            subtitle:
-                'The workout in a Live Activity and the Dynamic Island, '
-                'with pause and skip.',
-          )
-        else
-          const _Feature(
-            icon: Icons.notifications_active_rounded,
-            title: 'Notification controls',
-            subtitle: 'Pause and skip right from the workout notification.',
-          ),
-        const _Feature(
-          icon: Icons.favorite_rounded,
-          title: 'No subscription, no ads',
-          subtitle: 'Pay once and keep Pro on every device with this account.',
-        ),
-        const SizedBox(height: 20),
-        FilledButton(
-          onPressed: price == null || busy
-              ? null
-              : () => _run(_Action.buy, pro.buy),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(64),
-            textStyle: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          child: _busy == _Action.buy
-              ? const _Spinner()
-              : Text(
-                  price == null ? 'Unlock Spurtly Pro' : 'Unlock for $price',
+        // What Pro adds scrolls on small screens; the price and the
+        // buttons stay in view.
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _Header(subtitle: 'One purchase, yours for good.'),
+                if (widget.reason case final reason?) ...[
+                  const SizedBox(height: 20),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.coral.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Text(
+                        reason,
+                        textAlign: TextAlign.center,
+                        style: text.bodyMedium?.copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                const _Feature(
+                  icon: Icons.bookmarks_rounded,
+                  title: 'Saved workouts',
+                  subtitle:
+                      'HIIT and Tabata ready to go, and as many of your own as you '
+                      'like. Start any of them with one tap.',
                 ),
-        ),
-        if (price == null)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(
-              "$_storeName isn't available right now. Check your connection "
-              'and try again later.',
-              textAlign: TextAlign.center,
-              style: text.bodySmall?.copyWith(color: AppColors.muted),
+                if (_iOS)
+                  const _Feature(
+                    icon: Icons.lock_clock_rounded,
+                    title: 'Lock-screen controls',
+                    subtitle:
+                        'The workout in a Live Activity and the Dynamic Island, '
+                        'with pause and skip.',
+                  )
+                else
+                  const _Feature(
+                    icon: Icons.notifications_active_rounded,
+                    title: 'Notification controls',
+                    subtitle:
+                        'Pause and skip right from the workout notification.',
+                  ),
+                const _Feature(
+                  icon: Icons.tune_rounded,
+                  title: 'Signal settings',
+                  subtitle:
+                      'Choose the sounds, the 3-2-1 countdown and vibration.',
+                ),
+                const _Feature(
+                  icon: Icons.favorite_rounded,
+                  title: 'No subscription, no ads',
+                  subtitle: 'Pay once and keep Pro on every device with this account.',
+                ),
+              ],
             ),
           ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextButton(
-                onPressed: busy
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FilledButton(
+                onPressed: price == null || busy
                     ? null
-                    : () => _run(_Action.restore, pro.restore),
-                child: _busy == _Action.restore
+                    : () => _run(_Action.buy, pro.buy),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(64),
+                  textStyle: text.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                child: _busy == _Action.buy
                     ? const _Spinner()
-                    : const Text('Restore purchase'),
+                    : Text(
+                        price == null
+                            ? 'Unlock Spurtly Pro'
+                            : 'Unlock for $price',
+                      ),
               ),
-            ),
-            Expanded(
-              child: TextButton(
-                onPressed: busy
-                    ? null
-                    : () => _run(_Action.redeem, () async {
-                        await pro.redeemCode();
-                        return null;
-                      }),
-                child: const Text('Redeem code'),
+              if (price == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    "$_storeName isn't available right now. Check your connection "
+                    'and try again later.',
+                    textAlign: TextAlign.center,
+                    style: text.bodySmall?.copyWith(color: AppColors.muted),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => _run(_Action.restore, pro.restore),
+                      child: _busy == _Action.restore
+                          ? const _Spinner()
+                          : const Text('Restore purchase'),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => _run(_Action.redeem, () async {
+                              await pro.redeemCode();
+                              return null;
+                            }),
+                      child: const Text('Redeem code'),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        if (_message case final message?)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              message,
-              textAlign: TextAlign.center,
-              style: text.bodyMedium?.copyWith(color: Colors.white),
-            ),
+              if (_message case final message?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium?.copyWith(color: Colors.white),
+                  ),
+                ),
+            ],
           ),
+        ),
       ],
     );
   }

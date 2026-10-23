@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../models/saved_workout.dart';
+import '../models/app_settings.dart';
+import '../models/workout_config.dart';
 import '../services/app_services.dart';
 import '../services/workout_library.dart';
 import 'timer_screen.dart';
 
-/// Opens the timer for [workout] with the current settings.
+/// Opens the timer for [config]. Saved workouts pass their [name]; the free
+/// screen has none.
 Future<void> startWorkout(
   BuildContext context, {
-  required SavedWorkout workout,
+  required WorkoutConfig config,
+  String? name,
   required WorkoutLibrary library,
   required AppServices services,
 }) async {
@@ -16,11 +19,17 @@ Future<void> startWorkout(
   // interrupts a workout.
   await services.notifications.requestPermission();
   if (!context.mounted) return;
+  // Signal settings are a Pro feature; the free screen only has the sound
+  // switch.
+  final settings = services.pro.unlocked
+      ? library.settings
+      : AppSettings(sounds: library.settings.sounds);
   await Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => TimerScreen(
-        workout: workout,
-        settings: library.settings,
+        config: config,
+        name: name,
+        settings: settings,
         services: services,
       ),
     ),

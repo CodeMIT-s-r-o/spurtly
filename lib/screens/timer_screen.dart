@@ -9,7 +9,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/app_settings.dart';
 import '../models/phase.dart';
-import '../models/saved_workout.dart';
 import '../models/workout_config.dart';
 import '../services/app_services.dart';
 import '../services/live_activity.dart';
@@ -22,12 +21,16 @@ import '../widgets/readable_width.dart';
 class TimerScreen extends StatefulWidget {
   const TimerScreen({
     super.key,
-    required this.workout,
+    required this.config,
+    this.name,
     required this.settings,
     required this.services,
   });
 
-  final SavedWorkout workout;
+  final WorkoutConfig config;
+
+  /// The saved workout's name for the Done screen; none on the free screen.
+  final String? name;
   final AppSettings settings;
   final AppServices services;
 
@@ -43,7 +46,7 @@ class _TimerScreenState extends State<TimerScreen>
     onCountdown: _onCountdown,
   );
 
-  WorkoutConfig get _config => widget.workout.config;
+  WorkoutConfig get _config => widget.config;
   AppServices get _services => widget.services;
 
   /// Bumped every frame while running so the ring sweeps smoothly; the rest
@@ -421,14 +424,16 @@ class _TimerScreenState extends State<TimerScreen>
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.workout.name,
-                      style: text.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                    if (widget.name case final name?) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        name,
+                        style: text.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 4),
                     // Actual time: pauses and skipped phases don't count.
                     Text(

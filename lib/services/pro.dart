@@ -23,12 +23,9 @@ enum ProOutcome {
   failed,
 }
 
-/// Spurtly Pro: a one-time purchase that unlocks unlimited workouts and the
-/// lock-screen controls. Listeners hear when it unlocks or the price loads.
+/// Spurtly Pro: a one-time purchase that unlocks saved workouts, signal
+/// settings and the lock-screen controls. Listeners hear when it unlocks or the price loads.
 abstract class SpurtlyPro extends ChangeNotifier {
-  /// How many workouts the free version keeps; Pro has no limit.
-  static const freeWorkouts = 3;
-
   bool get unlocked;
 
   /// The price in the user's currency, e.g. "4,99 €"; null until the store

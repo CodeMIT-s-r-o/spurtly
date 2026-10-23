@@ -37,16 +37,19 @@ void main() {
   group('WorkoutLibrary', () {
     late List<List<SavedWorkout>> savedWorkouts;
     late List<AppSettings> savedSettings;
+    late List<WorkoutConfig> savedQuickConfigs;
     late WorkoutLibrary library;
 
     setUp(() {
       savedWorkouts = [];
       savedSettings = [];
+      savedQuickConfigs = [];
       library = WorkoutLibrary(
         workouts: presetWorkouts,
         settings: const AppSettings(),
         onWorkoutsChanged: savedWorkouts.add,
         onSettingsChanged: savedSettings.add,
+        onQuickConfigChanged: savedQuickConfigs.add,
       );
     });
 
@@ -123,6 +126,22 @@ void main() {
       expect(library.byId('preset-hiit-1-1'), presetFor('preset-hiit-1-1'));
     });
 
+    test('persists the free screen setup apart from the workouts', () {
+      expect(library.quickConfig, WorkoutConfig.defaults);
+
+      library.quickConfig = WorkoutConfig.defaults.copyWith(rounds: 5);
+      library.quickConfig = WorkoutConfig.defaults.copyWith(rounds: 5);
+
+      expect(library.quickConfig.rounds, 5);
+      expect(savedQuickConfigs, hasLength(1));
+      expect(savedWorkouts, isEmpty);
+    });
+
+    test('creates a workout from a given setup', () {
+      final config = WorkoutConfig.defaults.copyWith(work: Duration.zero);
+      expect(library.create(config: config).config, config);
+    });
+
     test('persists settings changes', () {
       library.settings = library.settings.copyWith(vibration: false);
       expect(library.settings.vibration, isFalse);
@@ -134,6 +153,7 @@ void main() {
     test('round-trips workouts and settings', () {
       for (final workout in presetWorkouts) {
         expect(SavedWorkout.fromJson(workout.toJson()), workout);
+        expect(WorkoutConfig.fromJson(workout.config.toJson()), workout.config);
       }
       const settings = AppSettings(sounds: false, countdown: true);
       expect(AppSettings.fromJson(settings.toJson()), settings);

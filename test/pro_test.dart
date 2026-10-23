@@ -33,7 +33,7 @@ class _FakeStore extends Fake implements InAppPurchase {
       ProductDetails(
         id: StorePro.productId,
         title: 'Spurtly Pro',
-        description: 'Unlimited workouts',
+        description: 'Saved workouts and lock-screen controls',
         price: '4,99 €',
         rawPrice: 4.99,
         currencyCode: 'EUR',
