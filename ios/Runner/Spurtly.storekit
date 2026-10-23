@@ -1,0 +1,38 @@
+{
+  "identifier" : "5C6F1E2A",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "6754211901",
+      "localizations" : [
+        {
+          "description" : "Unlimited workouts and lock-screen controls",
+          "displayName" : "Spurtly Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "spurtly_pro",
+      "referenceName" : "Spurtly Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "SVK",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

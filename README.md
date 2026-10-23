@@ -23,13 +23,22 @@ run with the phone locked on the floor.
   countdown and a vibration on phase changes can each be turned off in
   Settings.
 - **Done screen:** the actual workout time, without pauses or skipped phases.
-- **Live Activity (iOS 17+):** the current phase, a live countdown and its
-  progress on the lock screen and in the Dynamic Island, with **Pause/Resume**
-  and **Skip** buttons that control the timer without opening the app.
-- **Locked screen:** the workout keeps running and cues keep playing. Where Live
-  Activities are not available (older iOS, turned off, Android), each phase
-  change updates a single notification instead; it is removed when the app
-  comes back to the foreground.
+- **Live Activity (iOS 17+, Pro):** the current phase, a live countdown and
+  its progress on the lock screen and in the Dynamic Island, with
+  **Pause/Resume** and **Skip** buttons that control the timer without opening
+  the app.
+- **Workout notification (Android):** an ongoing notification with the phase
+  and a live countdown while a workout runs. With Pro it has **Pause/Resume**
+  and **Skip** buttons, and on Android 16+ it shows as a countdown chip in the
+  status bar.
+- **Locked screen:** the workout keeps running and cues keep playing. Without
+  a Live Activity (no Pro, older iOS, or turned off), each phase change
+  updates a single notification instead; it is removed when the app comes back
+  to the foreground.
+- **Spurtly Pro:** a one-time in-app purchase (`spurtly_pro`) that unlocks more
+  than three workouts, duplicating, and the lock-screen controls. Restore and
+  offer/promo codes are on the Pro screen; see
+  [docs/RELEASE.md](docs/RELEASE.md), chapter 6.
 
 ## Requirements
 
@@ -48,12 +57,26 @@ flutter run
 
 Pick a device with `flutter devices` and `flutter run -d <device-id>`.
 
+To try the Pro features without a store, in debug builds only:
+
+```bash
+flutter run --dart-define=SPURTLY_PRO=true
+```
+
+To test the purchase itself on iOS, run from Xcode (`open ios/Runner.xcworkspace`);
+the `Runner` scheme uses `ios/Runner/Spurtly.storekit`.
+
 Checks:
 
 ```bash
 flutter analyze
 flutter test
 ```
+
+## Releasing
+
+How to sign, build and publish to the App Store and Google Play, with a
+checklist of what is still missing: [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Project layout
 
@@ -65,19 +88,27 @@ lib/
   models/                   WorkoutConfig, SavedWorkout, presets, AppSettings
                             and Phase (one timed segment)
   timer/workout_timer.dart  Runs the phases; time comes from a clock, not ticks
-  screens/                  Workout list, workout editor, settings and timer
+  screens/                  Workout list, workout editor, settings, Pro and
+                            timer
   timer/phase_text.dart     "Round 2 / 3", "Next: Rest · 0:15" and similar texts
   services/
     sounds.dart                 Cue playback and the background keep-alive loop
-    live_activity.dart          Live Activity state and its method channel
+    live_activity.dart          Live Activity / Android workout notification
+                                state and its method channel
+    pro.dart                    Spurtly Pro: purchase, restore, cached state
     workout_notifications.dart  Fallback lock-screen notification
     workout_library.dart        Saved workouts and settings, stored as JSON
   widgets/stepper_row.dart  − / + row with hold-to-repeat
 ios/
   Runner/LiveActivityChannel.swift  Starts/updates/ends the activity for Dart
+  Runner/Spurtly.storekit           StoreKit testing config for Xcode runs
+  Runner/PrivacyInfo.xcprivacy      Privacy manifest
   Shared/SpurtlyActivity.swift      Activity data and the button intents,
                                     compiled into the app and the extension
   SpurtlyLiveActivity/              Widget extension that draws the activity
+android/app/src/main/kotlin/sk/codemit/spurtly/
+  WorkoutService.kt         Foreground service and its workout notification
+  LiveActivityChannel.kt    The same method channel as on iOS
 test/                       Timer logic and setup screen tests
 tool/                       Scripts that generate the icon and sounds
 assets/
@@ -131,5 +162,9 @@ Apple may question apps that use background audio only to stay alive. An
 interval timer that plays audible cues is a common, usually accepted case, but
 keep it in mind for App Store review.
 
-On Android the audio players hold a partial wake lock while playing
-(`WAKE_LOCK` permission). This path has not been tested on a device yet.
+On Android, `WorkoutService` runs as a `mediaPlayback` foreground service
+while a workout runs. Android 16 mutes background apps that have none, and it
+also keeps the system from stopping the app during a long workout. Its ongoing
+notification counts the phase down by itself, like the Live Activity. The
+audio players also hold a partial wake lock while playing (`WAKE_LOCK`
+permission). Tested on the emulator, not yet on a phone.

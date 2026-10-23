@@ -6,15 +6,18 @@ import '../models/phase.dart';
 import '../models/saved_workout.dart';
 import '../models/workout_config.dart';
 import '../services/app_services.dart';
+import '../services/pro.dart';
 import '../services/workout_library.dart';
 import '../theme.dart';
 import '../widgets/section_header.dart';
+import 'pro_sheet.dart';
 import 'settings_sheet.dart';
 import 'start_workout.dart';
 import 'workout_screen.dart';
 
 /// The saved workouts: tap one to edit it, or its play button to start.
-/// Swipe right to duplicate a workout, left to delete it.
+/// Swipe right to duplicate a workout, left to delete it. Without Pro, a
+/// fourth workout can't be added.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.library, required this.services});
 
@@ -38,9 +41,31 @@ class HomeScreen extends StatelessWidget {
       );
   }
 
-  void _duplicate(SavedWorkout workout) {
+  void _duplicate(BuildContext context, SavedWorkout workout) {
+    if (!_canAdd(context)) return;
     library.duplicate(workout.id);
     HapticFeedback.mediumImpact();
+  }
+
+  void _create(BuildContext context) {
+    if (_canAdd(context)) _open(context, library.create());
+  }
+
+  bool get _atFreeLimit =>
+      !services.pro.unlocked &&
+      library.workouts.length >= SpurtlyPro.freeWorkouts;
+
+  /// Offers Pro instead when the free version is full.
+  bool _canAdd(BuildContext context) {
+    if (!_atFreeLimit) return true;
+    showProSheet(
+      context,
+      services.pro,
+      reason:
+          'The free version keeps ${SpurtlyPro.freeWorkouts} workouts. '
+          'Unlock Pro to add more.',
+    );
+    return false;
   }
 
   void _open(BuildContext context, SavedWorkout workout) {
@@ -61,7 +86,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: ListenableBuilder(
-          listenable: library,
+          listenable: Listenable.merge([library, services.pro]),
           builder: (context, _) => ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             children: [
@@ -99,7 +124,8 @@ class HomeScreen extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.tune_rounded),
                     tooltip: 'Settings',
-                    onPressed: () => showSettingsSheet(context, library),
+                    onPressed: () =>
+                        showSettingsSheet(context, library, services.pro),
                   ),
                 ],
               ),
@@ -107,7 +133,7 @@ class HomeScreen extends StatelessWidget {
               for (final workout in library.workouts) ...[
                 _Swipeable(
                   key: ValueKey(workout.id),
-                  onDuplicate: () => _duplicate(workout),
+                  onDuplicate: () => _duplicate(context, workout),
                   onDelete: () => _delete(context, workout),
                   child: _WorkoutCard(
                     workout: workout,
@@ -124,9 +150,18 @@ class HomeScreen extends StatelessWidget {
               ],
               const SizedBox(height: 6),
               OutlinedButton.icon(
-                onPressed: () => _open(context, library.create()),
+                onPressed: () => _create(context),
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('New workout'),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('New workout'),
+                    if (_atFreeLimit) ...[
+                      const SizedBox(width: 10),
+                      const _ProBadge(),
+                    ],
+                  ],
+                ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
                   foregroundColor: Colors.white,
@@ -146,6 +181,31 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProBadge extends StatelessWidget {
+  const _ProBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.coral,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text(
+          'PRO',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.onCoral,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1,
           ),
         ),
       ),

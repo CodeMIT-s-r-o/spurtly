@@ -72,12 +72,15 @@ class LiveActivityState {
 /// Buttons on the Live Activity.
 enum LiveActivityControl { togglePause, skip }
 
-/// The workout on the iOS lock screen and in the Dynamic Island, with
-/// pause/resume and skip buttons.
+/// The running workout outside the app, counting down by itself: a Live
+/// Activity on the iOS lock screen and in the Dynamic Island, or on Android
+/// the notification of a foreground service that keeps the app and its
+/// sounds going while the screen is off.
 abstract interface class LiveActivity {
-  /// Shows the activity; returns `false` where Live Activities are not
-  /// available (Android, iOS before 17, or turned off by the user).
-  Future<bool> start(LiveActivityState state);
+  /// Shows the activity, with pause/resume and skip buttons if [controls];
+  /// returns `false` where it is not available (iOS before 17, Live
+  /// Activities turned off, or the service could not start).
+  Future<bool> start(LiveActivityState state, {bool controls = true});
 
   Future<void> update(LiveActivityState state);
 
@@ -106,14 +109,15 @@ class PlatformLiveActivity implements LiveActivity {
       _onControl = handler;
 
   @override
-  Future<bool> start(LiveActivityState state) async {
+  Future<bool> start(LiveActivityState state, {bool controls = true}) async {
     try {
       return await _channel.invokeMethod<bool>('start', {
             'state': state.toMap(),
+            'controls': controls,
           }) ??
           false;
     } on MissingPluginException {
-      return false; // Not on iOS.
+      return false; // Not on iOS or Android.
     } catch (error) {
       debugPrint('Live Activity not started: $error');
       return false;
@@ -135,7 +139,7 @@ class PlatformLiveActivity implements LiveActivity {
     try {
       await _channel.invokeMethod<void>(method, arguments);
     } on MissingPluginException {
-      // Not on iOS.
+      // Not on iOS or Android.
     } catch (error) {
       debugPrint('Live Activity $method failed: $error');
     }

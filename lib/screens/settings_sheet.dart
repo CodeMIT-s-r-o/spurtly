@@ -1,23 +1,33 @@
 import 'package:flutter/material.dart';
 
+import '../services/pro.dart';
 import '../services/workout_library.dart';
 import '../theme.dart';
+import 'pro_sheet.dart';
 
-/// Turns the timer's sounds, countdown and vibration on or off.
-Future<void> showSettingsSheet(BuildContext context, WorkoutLibrary library) {
+/// Spurtly Pro, and switches for the timer's sounds, countdown and vibration.
+Future<void> showSettingsSheet(
+  BuildContext context,
+  WorkoutLibrary library,
+  SpurtlyPro pro,
+) {
   return showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
     backgroundColor: AppColors.surface,
     showDragHandle: true,
-    builder: (context) => SafeArea(
+    builder: (context) => SingleChildScrollView(
       child: ListenableBuilder(
-        listenable: library,
+        listenable: Listenable.merge([library, pro]),
         builder: (context, _) {
           final settings = library.settings;
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _ProTile(pro: pro),
+              const Divider(height: 24, indent: 24, endIndent: 24),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                 child: Text(
@@ -60,4 +70,37 @@ Future<void> showSettingsSheet(BuildContext context, WorkoutLibrary library) {
       ),
     ),
   );
+}
+
+class _ProTile extends StatelessWidget {
+  const _ProTile({required this.pro});
+
+  final SpurtlyPro pro;
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = pro.unlocked;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+      leading: const Icon(
+        Icons.workspace_premium_rounded,
+        color: AppColors.coral,
+        size: 32,
+      ),
+      title: Text(
+        'Spurtly Pro',
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w800),
+      ),
+      subtitle: Text(
+        unlocked
+            ? 'Unlocked. Thank you!'
+            : 'Unlimited workouts and lock-screen controls',
+      ),
+      trailing: unlocked
+          ? const Icon(Icons.check_circle_rounded, color: AppColors.teal)
+          : const Icon(Icons.chevron_right_rounded),
+      onTap: () => showProSheet(context, pro),
+    );
+  }
 }

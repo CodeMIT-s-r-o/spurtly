@@ -5,6 +5,7 @@ import 'package:spurtly/models/app_settings.dart';
 import 'package:spurtly/models/presets.dart';
 import 'package:spurtly/services/app_services.dart';
 import 'package:spurtly/services/live_activity.dart';
+import 'package:spurtly/services/pro.dart';
 import 'package:spurtly/services/sounds.dart';
 import 'package:spurtly/services/workout_library.dart';
 import 'package:spurtly/services/workout_notifications.dart';
@@ -19,7 +20,8 @@ class _SilentSounds implements Sounds {
 
 class _NoLiveActivity implements LiveActivity {
   @override
-  Future<bool> start(LiveActivityState state) async => false;
+  Future<bool> start(LiveActivityState state, {bool controls = true}) async =>
+      false;
 
   @override
   Future<void> update(LiveActivityState state) async {}
@@ -45,10 +47,35 @@ class _NoNotifications implements WorkoutNotifications {
   Future<void> clear() async {}
 }
 
+class _FakePro extends SpurtlyPro {
+  _FakePro({required this._unlocked});
+
+  bool _unlocked;
+
+  @override
+  bool get unlocked => _unlocked;
+
+  @override
+  String? get price => '4,99 €';
+
+  @override
+  Future<ProOutcome> buy() async {
+    _unlocked = true;
+    notifyListeners();
+    return ProOutcome.unlocked;
+  }
+
+  @override
+  Future<ProOutcome> restore() async => ProOutcome.notFound;
+
+  @override
+  Future<void> redeemCode() async {}
+}
+
 void main() {
   late WorkoutLibrary library;
 
-  Future<void> pumpApp(WidgetTester tester) async {
+  Future<void> pumpApp(WidgetTester tester, {bool pro = false}) async {
     // iPhone-sized viewport, so every row is on screen.
     tester.view
       ..physicalSize = const Size(1170, 2532)
@@ -65,6 +92,7 @@ void main() {
           sounds: _SilentSounds(),
           notifications: _NoNotifications(),
           liveActivity: _NoLiveActivity(),
+          pro: _FakePro(unlocked: pro),
         ),
       ),
     );
@@ -99,7 +127,7 @@ void main() {
   });
 
   testWidgets('a new workout can be renamed and deleted', (tester) async {
-    await pumpApp(tester);
+    await pumpApp(tester, pro: true);
 
     await tester.tap(find.text('New workout'));
     await tester.pumpAndSettle();
@@ -145,7 +173,7 @@ void main() {
   testWidgets('swiping right duplicates a workout and keeps the original', (
     tester,
   ) async {
-    await pumpApp(tester);
+    await pumpApp(tester, pro: true);
 
     await tester.drag(find.text('Tabata'), const Offset(500, 0));
     await tester.pumpAndSettle();
@@ -153,6 +181,73 @@ void main() {
     expect(find.text('Tabata'), findsOneWidget);
     expect(find.text('Tabata copy'), findsOneWidget);
     expect(library.workouts, hasLength(4));
+  });
+
+  testWidgets('without Pro, a fourth workout offers Pro; buying unlocks it', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    expect(find.text('PRO'), findsOneWidget);
+
+    await tester.tap(find.text('New workout'));
+    await tester.pumpAndSettle();
+    expect(library.workouts, hasLength(3));
+    expect(
+      find.text('The free version keeps 3 workouts. Unlock Pro to add more.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Unlock for 4,99 €'));
+    await tester.pumpAndSettle();
+    expect(find.text('Unlocked. Thank you for supporting Spurtly!'), findsOne);
+
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.text('PRO'), findsNothing);
+    await tester.tap(find.text('New workout'));
+    await tester.pumpAndSettle();
+    expect(library.workouts, hasLength(4));
+  });
+
+  testWidgets('without Pro, swiping right offers Pro instead of a copy', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.drag(find.text('Tabata'), const Offset(500, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tabata copy'), findsNothing);
+    expect(find.text('Spurtly Pro'), findsOneWidget);
+  });
+
+  testWidgets('without Pro, a deleted workout makes room for a new one', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.drag(find.text('HIIT 2:1'), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('PRO'), findsNothing);
+
+    await tester.tap(find.text('New workout'));
+    await tester.pumpAndSettle();
+    expect(find.text('My workout'), findsOneWidget);
+  });
+
+  testWidgets('settings offer Pro, restore reports nothing found', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Spurtly Pro'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restore purchase'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('No earlier purchase found'), findsOneWidget);
   });
 
   testWidgets('settings switch signals off', (tester) async {

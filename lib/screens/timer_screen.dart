@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -81,8 +82,14 @@ class _TimerScreenState extends State<TimerScreen>
   }
 
   Future<void> _startLiveActivity() async {
+    // On iPhone the Live Activity is a Pro feature. On Android the workout
+    // notification belongs to the foreground service that keeps the cues
+    // audible, so it always shows; only its buttons need Pro.
+    final controls = _services.pro.unlocked;
+    if (!controls && defaultTargetPlatform == TargetPlatform.iOS) return;
     final shown = await _services.liveActivity.start(
       LiveActivityState.of(_timer, DateTime.now()),
+      controls: controls,
     );
     if (!shown) return;
     if (!mounted) {
