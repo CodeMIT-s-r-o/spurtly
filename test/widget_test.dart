@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spurtly/app.dart';
 import 'package:spurtly/models/app_settings.dart';
@@ -75,10 +76,15 @@ class _FakePro extends SpurtlyPro {
 void main() {
   late WorkoutLibrary library;
 
-  Future<void> pumpApp(WidgetTester tester, {bool pro = false}) async {
-    // iPhone-sized viewport, so every row is on screen.
+  /// [size] is in logical pixels; by default an iPhone, so every row is on
+  /// screen.
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    bool pro = false,
+    Size size = const Size(390, 844),
+  }) async {
     tester.view
-      ..physicalSize = const Size(1170, 2532)
+      ..physicalSize = size * 3
       ..devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     library = WorkoutLibrary(
@@ -248,6 +254,78 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('No earlier purchase found'), findsOneWidget);
+  });
+
+  group('on a tablet', () {
+    const landscape = Size(1280, 800);
+    const portrait = Size(800, 1280);
+
+    setUp(() {
+      // The timer keeps the screen on through wakelock_plus.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMessageHandler(
+            'dev.flutter.pigeon.wakelock_plus_platform_interface.'
+            'WakelockPlusApi.toggle',
+            (_) async => const StandardMessageCodec().encodeMessage([null]),
+          );
+    });
+
+    Future<void> start(WidgetTester tester, String workout) async {
+      await tester.tap(find.bySemanticsLabel('Start $workout'));
+      // The ring animates while the timer runs, so it never settles.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    testWidgets('the list and the editor keep a readable width', (
+      tester,
+    ) async {
+      await pumpApp(tester, size: landscape);
+
+      final card = find
+          .ancestor(of: find.text('Tabata'), matching: find.byType(Material))
+          .first;
+      expect(tester.getSize(card).width, 640);
+      expect(tester.getCenter(card).dx, 640);
+
+      await tester.tap(find.text('Tabata'));
+      await tester.pumpAndSettle();
+      final start = find.widgetWithText(FilledButton, 'Start');
+      expect(tester.getSize(start).width, 640);
+      expect(tester.getCenter(start).dx, 640);
+    });
+
+    testWidgets('in landscape the timer puts its buttons beside the ring', (
+      tester,
+    ) async {
+      await pumpApp(tester, size: landscape);
+      await start(tester, 'Tabata');
+
+      final ring = tester.getCenter(find.text('Warm-up'));
+      final pause = tester.getCenter(find.bySemanticsLabel('Pause'));
+      expect(pause.dx, greaterThan(ring.dx + 300));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('in portrait the timer keeps its buttons below the ring', (
+      tester,
+    ) async {
+      await pumpApp(tester, size: portrait);
+      await start(tester, 'Tabata');
+
+      final ring = tester.getCenter(find.text('Warm-up'));
+      final pause = tester.getCenter(find.bySemanticsLabel('Pause'));
+      expect(pause.dy, greaterThan(ring.dy + 300));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a low split-screen window still fits', (tester) async {
+      await pumpApp(tester, size: const Size(1280, 390));
+      expect(tester.takeException(), isNull);
+
+      await start(tester, 'HIIT 1:1');
+      expect(tester.takeException(), isNull);
+    });
   });
 
   testWidgets('settings switch signals off', (tester) async {

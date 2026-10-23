@@ -45,6 +45,7 @@ Rozhodnutia a práca, ktoré by mali byť hotové skôr, než pôjdeme do obchod
 - [x] **Android: release podpisovanie** z `android/key.properties`. Kým súbor neexistuje, release build sa podpíše debug kľúčom. Pozri 4.1.
 - [x] **iOS: `ITSAppUsesNonExemptEncryption = NO`** v `ios/Runner/Info.plist`. Appka nepoužíva vlastné šifrovanie, takže sa App Store pri každom uploade nebude pýtať na exportné povolenie.
 - [x] **iOS: privacy manifest** `ios/Runner/PrivacyInfo.xcprivacy`: žiadne sledovanie, žiadne zbierané dáta a dôvod pre `UserDefaults` (`CA92.1`), ktorý používa `shared_preferences`.
+- [ ] **Android tablety a skladačky:** Android 16 na veľkých displejoch ignoruje zámok na výšku, takže sa tam appka otáča a roztiahne. Plán úprav: [ANDROID_TABLETS.md](ANDROID_TABLETS.md).
 - [ ] **Testovanie na reálnych zariadeniach:** tvoj iPhone („Hans“) a aspoň jeden Android telefón. Treba overiť zvuky pri zamknutej obrazovke, vibrácie, Live Activity a jej tlačidlá a notifikáciu na Androide. Simulátor zvuky ani vibrácie neoverí.
 - [ ] **Zmazanie predvolených dát pri prvom spustení:** netreba, nová inštalácia začína s tromi predvoľbami.
 

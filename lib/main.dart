@@ -13,6 +13,8 @@ import 'services/workout_notifications.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Portrait from the first frame on phones; the app unlocks rotation on
+  // tablets (see SpurtlyApp).
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 

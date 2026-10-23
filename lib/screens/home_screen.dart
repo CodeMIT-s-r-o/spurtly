@@ -9,6 +9,7 @@ import '../services/app_services.dart';
 import '../services/pro.dart';
 import '../services/workout_library.dart';
 import '../theme.dart';
+import '../widgets/readable_width.dart';
 import '../widgets/section_header.dart';
 import 'pro_sheet.dart';
 import 'settings_sheet.dart';
@@ -85,103 +86,112 @@ class HomeScreen extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     return Scaffold(
       body: SafeArea(
-        child: ListenableBuilder(
-          listenable: Listenable.merge([library, services.pro]),
-          builder: (context, _) => ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            children: [
-              Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final side = readableInset(constraints.maxWidth);
+            return ListenableBuilder(
+              listenable: Listenable.merge([library, services.pro]),
+              builder: (context, _) => ListView(
+                // Full width, so the margins of a tablet scroll it too.
+                padding: EdgeInsets.fromLTRB(side, 16, side, 24),
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(13),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 56,
-                      height: 56,
-                      excludeFromSemantics: true,
-                    ),
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(13),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: 56,
+                          height: 56,
+                          excludeFromSemantics: true,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Spurtly',
+                              style: text.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              'Interval timer',
+                              style: text.bodyMedium?.copyWith(
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.tune_rounded),
+                        tooltip: 'Settings',
+                        onPressed: () =>
+                            showSettingsSheet(context, library, services.pro),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  const SectionHeader('Your workouts'),
+                  for (final workout in library.workouts) ...[
+                    _Swipeable(
+                      key: ValueKey(workout.id),
+                      onDuplicate: () => _duplicate(context, workout),
+                      onDelete: () => _delete(context, workout),
+                      child: _WorkoutCard(
+                        workout: workout,
+                        onOpen: () => _open(context, workout),
+                        onStart: () => startWorkout(
+                          context,
+                          workout: workout,
+                          library: library,
+                          services: services,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  const SizedBox(height: 6),
+                  OutlinedButton.icon(
+                    onPressed: () => _create(context),
+                    icon: const Icon(Icons.add_rounded),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Spurtly',
-                          style: text.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'Interval timer',
-                          style: text.bodyMedium?.copyWith(
-                            color: AppColors.muted,
-                          ),
-                        ),
+                        const Text('New workout'),
+                        if (_atFreeLimit) ...[
+                          const SizedBox(width: 10),
+                          const _ProBadge(),
+                        ],
                       ],
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.tune_rounded),
-                    tooltip: 'Settings',
-                    onPressed: () =>
-                        showSettingsSheet(context, library, services.pro),
-                  ),
-                ],
-              ),
-              const SectionHeader('Your workouts'),
-              for (final workout in library.workouts) ...[
-                _Swipeable(
-                  key: ValueKey(workout.id),
-                  onDuplicate: () => _duplicate(context, workout),
-                  onDelete: () => _delete(context, workout),
-                  child: _WorkoutCard(
-                    workout: workout,
-                    onOpen: () => _open(context, workout),
-                    onStart: () => startWorkout(
-                      context,
-                      workout: workout,
-                      library: library,
-                      services: services,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(
+                        color: AppColors.stepper,
+                        width: 1.5,
+                      ),
+                      textStyle: text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 10),
-              ],
-              const SizedBox(height: 6),
-              OutlinedButton.icon(
-                onPressed: () => _create(context),
-                icon: const Icon(Icons.add_rounded),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('New workout'),
-                    if (_atFreeLimit) ...[
-                      const SizedBox(width: 10),
-                      const _ProBadge(),
-                    ],
-                  ],
-                ),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: AppColors.stepper, width: 1.5),
-                  textStyle: text.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                  if (library.workouts.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Text(
+                        'Swipe a workout right to duplicate it, left to delete it.',
+                        textAlign: TextAlign.center,
+                        style: text.bodySmall?.copyWith(color: AppColors.muted),
+                      ),
+                    ),
+                ],
               ),
-              if (library.workouts.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 14),
-                  child: Text(
-                    'Swipe a workout right to duplicate it, left to delete it.',
-                    textAlign: TextAlign.center,
-                    style: text.bodySmall?.copyWith(color: AppColors.muted),
-                  ),
-                ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

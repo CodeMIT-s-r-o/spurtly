@@ -7,6 +7,7 @@ import '../models/workout_config.dart';
 import '../services/app_services.dart';
 import '../services/workout_library.dart';
 import '../theme.dart';
+import '../widgets/readable_width.dart';
 import '../widgets/section_header.dart';
 import '../widgets/stepper_row.dart';
 import 'start_workout.dart';
@@ -164,159 +165,169 @@ class _WorkoutEditor extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-              child: Row(
-                children: [
-                  const BackButton(),
-                  Expanded(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () => _rename(context),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 6,
-                        ),
-                        child: Text(
-                          workout.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
+            ReadableWidth(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                child: Row(
+                  children: [
+                    const BackButton(),
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => _rename(context),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 6,
+                          ),
+                          child: Text(
+                            workout.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  PopupMenuButton<_MenuAction>(
-                    tooltip: 'More',
-                    onSelected: (action) => _onMenu(context, action),
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: _MenuAction.rename,
-                        child: Text('Rename'),
-                      ),
-                      if (preset != null)
-                        PopupMenuItem(
-                          value: _MenuAction.restore,
-                          enabled: preset != workout,
-                          child: const Text('Restore defaults'),
+                    PopupMenuButton<_MenuAction>(
+                      tooltip: 'More',
+                      onSelected: (action) => _onMenu(context, action),
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: _MenuAction.rename,
+                          child: Text('Rename'),
                         ),
-                      const PopupMenuItem(
-                        value: _MenuAction.delete,
-                        child: Text('Delete'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                children: [
-                  if (workout.description.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, right: 4),
-                      child: Text(
-                        workout.description,
-                        style: text.bodyMedium?.copyWith(
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ),
-                  const SectionHeader('Before you start'),
-                  _durationRow(
-                    type: PhaseType.warmup,
-                    icon: Icons.directions_walk,
-                    value: _config.warmup,
-                    min: Duration.zero,
-                    apply: (d) => _config.copyWith(warmup: d),
-                  ),
-                  const SectionHeader('Each interval'),
-                  _durationRow(
-                    type: PhaseType.work,
-                    icon: Icons.local_fire_department,
-                    value: _config.work,
-                    min: _minWork,
-                    apply: (d) => _config.copyWith(work: d),
-                  ),
-                  gap,
-                  _durationRow(
-                    type: PhaseType.rest,
-                    icon: Icons.self_improvement,
-                    value: _config.rest,
-                    min: Duration.zero,
-                    apply: (d) => _config.copyWith(rest: d),
-                  ),
-                  const SectionHeader('Rounds'),
-                  _countRow(
-                    icon: Icons.format_list_numbered,
-                    label: 'Intervals per round',
-                    value: _config.intervals,
-                    max: _maxIntervals,
-                    apply: (n) => _config.copyWith(intervals: n),
-                  ),
-                  gap,
-                  _countRow(
-                    icon: Icons.repeat,
-                    label: 'Rounds',
-                    value: _config.rounds,
-                    max: _maxRounds,
-                    apply: (n) => _config.copyWith(rounds: n),
-                  ),
-                  gap,
-                  _durationRow(
-                    type: PhaseType.roundRest,
-                    icon: Icons.hourglass_bottom,
-                    value: _config.roundRest,
-                    min: Duration.zero,
-                    enabled: _config.rounds > 1,
-                    apply: (d) => _config.copyWith(roundRest: d),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Column(
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      text: 'Total  ',
-                      style: const TextStyle(color: AppColors.muted),
-                      children: [
-                        TextSpan(
-                          text: formatDuration(_config.total),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontFeatures: tabularFigures,
+                        if (preset != null)
+                          PopupMenuItem(
+                            value: _MenuAction.restore,
+                            enabled: preset != workout,
+                            child: const Text('Restore defaults'),
                           ),
+                        const PopupMenuItem(
+                          value: _MenuAction.delete,
+                          child: Text('Delete'),
                         ),
                       ],
                     ),
-                    style: text.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: () => startWorkout(
-                      context,
-                      workout: workout,
-                      library: library,
-                      services: services,
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final side = readableInset(constraints.maxWidth);
+                  return ListView(
+                    // Full width, so the margins of a tablet scroll it too.
+                    padding: EdgeInsets.fromLTRB(side, 0, side, 16),
+                    children: [
+                      if (workout.description.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4, right: 4),
+                          child: Text(
+                            workout.description,
+                            style: text.bodyMedium?.copyWith(
+                              color: AppColors.muted,
+                            ),
+                          ),
+                        ),
+                      const SectionHeader('Before you start'),
+                      _durationRow(
+                        type: PhaseType.warmup,
+                        icon: Icons.directions_walk,
+                        value: _config.warmup,
+                        min: Duration.zero,
+                        apply: (d) => _config.copyWith(warmup: d),
+                      ),
+                      const SectionHeader('Each interval'),
+                      _durationRow(
+                        type: PhaseType.work,
+                        icon: Icons.local_fire_department,
+                        value: _config.work,
+                        min: _minWork,
+                        apply: (d) => _config.copyWith(work: d),
+                      ),
+                      gap,
+                      _durationRow(
+                        type: PhaseType.rest,
+                        icon: Icons.self_improvement,
+                        value: _config.rest,
+                        min: Duration.zero,
+                        apply: (d) => _config.copyWith(rest: d),
+                      ),
+                      const SectionHeader('Rounds'),
+                      _countRow(
+                        icon: Icons.format_list_numbered,
+                        label: 'Intervals per round',
+                        value: _config.intervals,
+                        max: _maxIntervals,
+                        apply: (n) => _config.copyWith(intervals: n),
+                      ),
+                      gap,
+                      _countRow(
+                        icon: Icons.repeat,
+                        label: 'Rounds',
+                        value: _config.rounds,
+                        max: _maxRounds,
+                        apply: (n) => _config.copyWith(rounds: n),
+                      ),
+                      gap,
+                      _durationRow(
+                        type: PhaseType.roundRest,
+                        icon: Icons.hourglass_bottom,
+                        value: _config.roundRest,
+                        min: Duration.zero,
+                        enabled: _config.rounds > 1,
+                        apply: (d) => _config.copyWith(roundRest: d),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            ReadableWidth(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: Column(
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        text: 'Total  ',
+                        style: const TextStyle(color: AppColors.muted),
+                        children: [
+                          TextSpan(
+                            text: formatDuration(_config.total),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: tabularFigures,
+                            ),
+                          ),
+                        ],
+                      ),
+                      style: text.titleMedium,
                     ),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 32),
-                    label: const Text('Start'),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(64),
-                      textStyle: text.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: () => startWorkout(
+                        context,
+                        workout: workout,
+                        library: library,
+                        services: services,
+                      ),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 32),
+                      label: const Text('Start'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(64),
+                        textStyle: text.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

@@ -17,6 +17,7 @@ import '../services/sounds.dart';
 import '../theme.dart';
 import '../timer/phase_text.dart';
 import '../timer/workout_timer.dart';
+import '../widgets/readable_width.dart';
 
 class TimerScreen extends StatefulWidget {
   const TimerScreen({
@@ -274,6 +275,81 @@ class _TimerScreenState extends State<TimerScreen>
     final text = Theme.of(context).textTheme;
     final paused = !_timer.isRunning;
     final (title, subtitle) = phasePosition(phase, _config);
+    final ring = LayoutBuilder(
+      builder: (context, constraints) {
+        final side =
+            math.min(constraints.maxWidth, constraints.maxHeight) * 0.88;
+        return Center(
+          child: SizedBox.square(
+            dimension: side,
+            child: CustomPaint(
+              painter: _RingPainter(_timer, repaint: _frame),
+              child: Padding(
+                padding: EdgeInsets.all(side * 0.14),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      paused ? 'Paused' : phase.type.label,
+                      style: text.titleLarge?.copyWith(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                    FittedBox(
+                      child: Text(
+                        formatDuration(
+                          Duration(seconds: _timer.phaseSecondsLeft),
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 120,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          fontFeatures: tabularFigures,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    final controls = [
+      Text(
+        nextLabel(_timer.nextPhase),
+        textAlign: TextAlign.center,
+        style: text.titleMedium?.copyWith(color: Colors.white70),
+      ),
+      const SizedBox(height: 28),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(width: 64),
+          const SizedBox(width: 28),
+          _RoundButton(
+            size: 88,
+            filled: true,
+            icon: _timer.isRunning
+                ? Icons.pause_rounded
+                : Icons.play_arrow_rounded,
+            semanticLabel: _timer.isRunning ? 'Pause' : 'Resume',
+            onPressed: _timer.togglePause,
+          ),
+          const SizedBox(width: 28),
+          _RoundButton(
+            size: 64,
+            icon: Icons.skip_next_rounded,
+            semanticLabel: 'Skip phase',
+            onPressed: _timer.skip,
+          ),
+        ],
+      ),
+    ];
     return Column(
       children: [
         _TopBar(
@@ -285,124 +361,99 @@ class _TimerScreenState extends State<TimerScreen>
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final side =
-                  math.min(constraints.maxWidth, constraints.maxHeight) * 0.88;
-              return Center(
-                child: SizedBox.square(
-                  dimension: side,
-                  child: CustomPaint(
-                    painter: _RingPainter(_timer, repaint: _frame),
-                    child: Padding(
-                      padding: EdgeInsets.all(side * 0.14),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            paused ? 'Paused' : phase.type.label,
-                            style: text.titleLarge?.copyWith(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 3,
-                            ),
-                          ),
-                          FittedBox(
-                            child: Text(
-                              formatDuration(
-                                Duration(seconds: _timer.phaseSecondsLeft),
-                              ),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 120,
-                                fontWeight: FontWeight.w800,
-                                height: 1.1,
-                                fontFeatures: tabularFigures,
-                              ),
-                            ),
-                          ),
-                        ],
+              // Wide windows (a tablet in landscape) put the controls beside
+              // the ring, so the ring can use the full height.
+              if (constraints.maxWidth > constraints.maxHeight * 1.3) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 3, child: ring),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: controls,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ),
+                );
+              }
+              return Column(
+                children: [
+                  Expanded(child: ring),
+                  ...controls,
+                  const SizedBox(height: 32),
+                ],
               );
             },
           ),
         ),
-        Text(
-          nextLabel(_timer.nextPhase),
-          style: text.titleMedium?.copyWith(color: Colors.white70),
-        ),
-        const SizedBox(height: 28),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(width: 64),
-            const SizedBox(width: 28),
-            _RoundButton(
-              size: 88,
-              filled: true,
-              icon: _timer.isRunning
-                  ? Icons.pause_rounded
-                  : Icons.play_arrow_rounded,
-              semanticLabel: _timer.isRunning ? 'Pause' : 'Resume',
-              onPressed: _timer.togglePause,
-            ),
-            const SizedBox(width: 28),
-            _RoundButton(
-              size: 64,
-              icon: Icons.skip_next_rounded,
-              semanticLabel: 'Skip phase',
-              onPressed: _timer.skip,
-            ),
-          ],
-        ),
-        const SizedBox(height: 32),
       ],
     );
   }
 
   Widget _buildDone() {
     final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const Spacer(),
-          const Icon(Icons.check_circle_rounded, size: 96, color: Colors.white),
-          const SizedBox(height: 16),
-          Text(
-            'Done!',
-            style: text.displayMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
+    // Scrolls instead of overflowing in a low window, e.g. split screen.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: IntrinsicHeight(
+            child: ReadableWidth(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    const Spacer(),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 96,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Done!',
+                      style: text.displayMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.workout.name,
+                      style: text.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Actual time: pauses and skipped phases don't count.
+                    Text(
+                      workoutSummary(_config, _timer.activeTime),
+                      style: text.titleMedium?.copyWith(color: Colors.white70),
+                    ),
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.done,
+                        minimumSize: const Size.fromHeight(64),
+                        textStyle: text.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      child: const Text('Back'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            widget.workout.name,
-            style: text.titleLarge?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          // Actual time: pauses and skipped phases don't count.
-          Text(
-            workoutSummary(_config, _timer.activeTime),
-            style: text.titleMedium?.copyWith(color: Colors.white70),
-          ),
-          const Spacer(),
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.done,
-              minimumSize: const Size.fromHeight(64),
-              textStyle: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            child: const Text('Back'),
-          ),
-        ],
+        ),
       ),
     );
   }
