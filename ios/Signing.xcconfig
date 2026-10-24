@@ -1,0 +1,11 @@
+// Bundle ID and signing team of the app and its Live Activity extension.
+// For your own device builds, override both in Local.xcconfig next to this
+// file (not committed), e.g.:
+//   SPURTLY_TEAM = <your personal team ID>
+//   SPURTLY_BUNDLE_ID = sk.codemit.spurtly.dev
+// A personal team keeps the bundle IDs it registers, so test builds use the
+// .dev ID and sk.codemit.spurtly stays free for the CodeMIT account.
+SPURTLY_BUNDLE_ID = sk.codemit.spurtly
+SPURTLY_TEAM =
+
+#include? "Local.xcconfig"
