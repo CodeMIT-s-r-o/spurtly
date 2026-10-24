@@ -200,6 +200,18 @@ void main() {
       expect(timer.elapsed, const Duration(seconds: 10 + 30));
     });
 
+    test('stop ends early and keeps the time done so far', () {
+      timer.start();
+      advance(25); // 10 s warm-up, 15 s into the first work interval
+      timer.stop();
+      advance(60);
+
+      expect(timer.isFinished, isTrue);
+      expect(timer.isRunning, isFalse);
+      expect(changes.last, isNull);
+      expect(timer.activeTime, const Duration(seconds: 25));
+    });
+
     test('progress runs from 0 to 1 within a phase', () {
       timer.start();
       expect(timer.phaseProgress, 0);

@@ -133,6 +133,18 @@ void main() {
     );
   }
 
+  /// Drags [target] sideways step by step, like a finger, so the swipe
+  /// actions behind a card get built while it moves.
+  Future<void> swipe(WidgetTester tester, Finder target, double dx) async {
+    final gesture = await tester.startGesture(tester.getCenter(target));
+    for (var i = 0; i < 20; i++) {
+      await gesture.moveBy(Offset(dx / 20, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+  }
+
   /// Taps Start (or a card's play button) and lets the timer screen open;
   /// its ring animates while it runs, so it never settles.
   Future<void> start(WidgetTester tester, Finder button) async {
@@ -294,13 +306,12 @@ void main() {
       expect(library.workouts, hasLength(3));
     });
 
-    testWidgets('swiping left deletes a workout, Undo brings it back', (
+    testWidgets('a long swipe right deletes a workout, Undo brings it back', (
       tester,
     ) async {
       await pumpApp(tester, pro: true);
 
-      await tester.drag(find.text('HIIT 2:1'), const Offset(-500, 0));
-      await tester.pumpAndSettle();
+      await swipe(tester, find.text('HIIT 2:1'), 500);
       expect(find.text('HIIT 2:1'), findsNothing);
       expect(find.text('Deleted “HIIT 2:1”'), findsOneWidget);
 
@@ -313,13 +324,40 @@ void main() {
       ]);
     });
 
-    testWidgets('swiping right duplicates a workout and keeps the original', (
+    testWidgets('a short swipe right only shows Delete', (tester) async {
+      await pumpApp(tester, pro: true);
+
+      await swipe(tester, find.text('HIIT 2:1'), 120);
+      expect(library.workouts, hasLength(3));
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(library.byId('preset-hiit-2-1'), isNull);
+    });
+
+    testWidgets('a short swipe left offers Rename and Duplicate', (
       tester,
     ) async {
       await pumpApp(tester, pro: true);
 
-      await tester.drag(find.text('Tabata'), const Offset(500, 0));
+      await swipe(tester, find.text('Tabata'), -150);
+      expect(find.text('Duplicate'), findsOneWidget);
+      expect(library.workouts, hasLength(3));
+
+      await tester.tap(find.text('Rename'));
       await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Tabata x4');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(library.byId('preset-tabata')!.name, 'Tabata x4');
+    });
+
+    testWidgets('a long swipe left duplicates a workout and keeps it', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: true);
+
+      await swipe(tester, find.text('Tabata'), -500);
 
       expect(find.text('Tabata'), findsOneWidget);
       expect(find.text('Tabata copy'), findsOneWidget);
@@ -336,6 +374,37 @@ void main() {
       final timer = tester.widget<TimerScreen>(find.byType(TimerScreen));
       expect(timer.name, 'Tabata');
       expect(timer.settings, const AppSettings(countdown: false));
+    });
+
+    testWidgets('Stop ends the workout and shows the time done', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: true);
+      await start(tester, find.bySemanticsLabel('Start Tabata'));
+
+      await tester.tap(find.bySemanticsLabel('Stop workout'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('End'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stopped'), findsOneWidget);
+      expect(find.text('Tabata'), findsOneWidget);
+      expect(find.text('Back'), findsOneWidget);
+    });
+
+    testWidgets('Stop can be canceled', (tester) async {
+      await pumpApp(tester, pro: true);
+      await start(tester, find.bySemanticsLabel('Start Tabata'));
+
+      await tester.tap(find.bySemanticsLabel('Stop workout'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.text('Keep going'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('Stopped'), findsNothing);
+      expect(find.bySemanticsLabel('Pause'), findsOneWidget);
     });
 
     testWidgets('a phase change vibrates, unless vibration is off', (

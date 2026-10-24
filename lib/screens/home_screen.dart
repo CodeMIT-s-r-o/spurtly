@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../models/phase.dart';
 import '../models/saved_workout.dart';
@@ -10,14 +11,16 @@ import '../services/workout_library.dart';
 import '../theme.dart';
 import '../widgets/app_header.dart';
 import '../widgets/readable_width.dart';
+import '../widgets/rename_dialog.dart';
 import '../widgets/section_header.dart';
 import 'settings_sheet.dart';
 import 'start_workout.dart';
 import 'workout_screen.dart';
 
 /// The saved workouts: tap one to edit it, or its play button to start.
-/// Swipe right to duplicate a workout, left to delete it. The workout
-/// library is a Pro feature; without Pro the app opens `QuickTimerScreen`.
+/// Swipe a workout right to delete it, left to duplicate or rename it. The
+/// workout library is a Pro feature; without Pro the app opens
+/// `QuickTimerScreen`.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.library, required this.services});
 
@@ -39,6 +42,11 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       );
+  }
+
+  Future<void> _rename(BuildContext context, SavedWorkout workout) async {
+    final name = await showRenameDialog(context, workout.name);
+    if (name != null) library.save(workout.copyWith(name: name));
   }
 
   void _duplicate(SavedWorkout workout) {
@@ -68,65 +76,72 @@ class HomeScreen extends StatelessWidget {
             final side = readableInset(constraints.maxWidth);
             return ListenableBuilder(
               listenable: library,
-              builder: (context, _) => ListView(
-                // Full width, so the margins of a tablet scroll it too.
-                padding: EdgeInsets.fromLTRB(side, 16, side, 24),
-                children: [
-                  AppHeader(
-                    trailing: IconButton(
-                      icon: const Icon(Icons.tune_rounded),
-                      tooltip: 'Settings',
-                      onPressed: () =>
-                          showSettingsSheet(context, library, services.pro),
+              // Only one card shows its actions at a time.
+              builder: (context, _) => SlidableAutoCloseBehavior(
+                child: ListView(
+                  // Full width, so the margins of a tablet scroll it too.
+                  padding: EdgeInsets.fromLTRB(side, 16, side, 24),
+                  children: [
+                    AppHeader(
+                      trailing: IconButton(
+                        icon: const Icon(Icons.tune_rounded),
+                        tooltip: 'Settings',
+                        onPressed: () =>
+                            showSettingsSheet(context, library, services.pro),
+                      ),
                     ),
-                  ),
-                  const SectionHeader('Your workouts'),
-                  for (final workout in library.workouts) ...[
-                    _Swipeable(
-                      key: ValueKey(workout.id),
-                      onDuplicate: () => _duplicate(workout),
-                      onDelete: () => _delete(context, workout),
-                      child: _WorkoutCard(
-                        workout: workout,
-                        onOpen: () => _open(context, workout),
-                        onStart: () => startWorkout(
-                          context,
-                          config: workout.config,
-                          name: workout.name,
-                          library: library,
-                          services: services,
+                    const SectionHeader('Your workouts'),
+                    for (final workout in library.workouts) ...[
+                      _Swipeable(
+                        key: ValueKey(workout.id),
+                        onDelete: () => _delete(context, workout),
+                        onDuplicate: () => _duplicate(workout),
+                        onRename: () => _rename(context, workout),
+                        child: _WorkoutCard(
+                          workout: workout,
+                          onOpen: () => _open(context, workout),
+                          onStart: () => startWorkout(
+                            context,
+                            config: workout.config,
+                            name: workout.name,
+                            library: library,
+                            services: services,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    const SizedBox(height: 6),
+                    OutlinedButton.icon(
+                      onPressed: () => _open(context, library.create()),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('New workout'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(
+                          color: AppColors.stepper,
+                          width: 1.5,
+                        ),
+                        textStyle: text.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    if (library.workouts.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 14),
+                        child: Text(
+                          'Swipe a workout right to delete it, left to duplicate '
+                          'or rename it.',
+                          textAlign: TextAlign.center,
+                          style: text.bodySmall?.copyWith(
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
                   ],
-                  const SizedBox(height: 6),
-                  OutlinedButton.icon(
-                    onPressed: () => _open(context, library.create()),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('New workout'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(56),
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(
-                        color: AppColors.stepper,
-                        width: 1.5,
-                      ),
-                      textStyle: text.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  if (library.workouts.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 14),
-                      child: Text(
-                        'Swipe a workout right to duplicate it, left to delete it.',
-                        textAlign: TextAlign.center,
-                        style: text.bodySmall?.copyWith(color: AppColors.muted),
-                      ),
-                    ),
-                ],
+                ),
               ),
             );
           },
@@ -253,91 +268,125 @@ class _RatioStrip extends StatelessWidget {
   }
 }
 
-/// Swipe right to duplicate (the card springs back), left to delete.
-/// Screen readers get the same two actions.
+/// A short swipe shows the actions, a long one runs the main one: swipe
+/// right to delete, left to duplicate (or tap Rename instead). Screen
+/// readers get the same three actions.
 class _Swipeable extends StatelessWidget {
   const _Swipeable({
     super.key,
-    required this.onDuplicate,
     required this.onDelete,
+    required this.onDuplicate,
+    required this.onRename,
     required this.child,
   });
 
-  final VoidCallback onDuplicate;
   final VoidCallback onDelete;
+  final VoidCallback onDuplicate;
+  final VoidCallback onRename;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       customSemanticsActions: {
-        const CustomSemanticsAction(label: 'Duplicate'): onDuplicate,
         const CustomSemanticsAction(label: 'Delete'): onDelete,
+        const CustomSemanticsAction(label: 'Duplicate'): onDuplicate,
+        const CustomSemanticsAction(label: 'Rename'): onRename,
       },
-      child: Dismissible(
-        key: key!,
-        background: const _SwipeBackground(
-          color: AppColors.done,
-          icon: Icons.copy_rounded,
-          label: 'Duplicate',
-          alignment: Alignment.centerLeft,
+      child: Slidable(
+        key: key,
+        groupTag: 'workouts',
+        startActionPane: ActionPane(
+          motion: const BehindMotion(),
+          extentRatio: 0.3,
+          dismissible: DismissiblePane(onDismissed: onDelete),
+          children: [
+            _SwipeAction(
+              color: PhaseType.work.background,
+              icon: Icons.delete_outline_rounded,
+              label: 'Delete',
+              onPressed: onDelete,
+            ),
+          ],
         ),
-        secondaryBackground: _SwipeBackground(
-          color: PhaseType.work.background,
-          icon: Icons.delete_outline_rounded,
-          label: 'Delete',
-          alignment: Alignment.centerRight,
+        endActionPane: ActionPane(
+          motion: const BehindMotion(),
+          extentRatio: 0.55,
+          // A long swipe duplicates; the card stays and springs back.
+          dismissible: DismissiblePane(
+            onDismissed: () {},
+            closeOnCancel: true,
+            confirmDismiss: () async {
+              onDuplicate();
+              return false;
+            },
+          ),
+          children: [
+            _SwipeAction(
+              color: AppColors.stepper,
+              icon: Icons.edit_outlined,
+              label: 'Rename',
+              onPressed: onRename,
+            ),
+            _SwipeAction(
+              color: AppColors.done,
+              icon: Icons.copy_rounded,
+              label: 'Duplicate',
+              onPressed: onDuplicate,
+            ),
+          ],
         ),
-        confirmDismiss: (direction) async {
-          if (direction == DismissDirection.startToEnd) {
-            onDuplicate();
-            return false;
-          }
-          return true;
-        },
-        onDismissed: (_) => onDelete(),
         child: child,
       ),
     );
   }
 }
 
-class _SwipeBackground extends StatelessWidget {
-  const _SwipeBackground({
+/// One rounded action behind a card, with a gap to its neighbours.
+class _SwipeAction extends StatelessWidget {
+  const _SwipeAction({
     required this.color,
     required this.icon,
     required this.label,
-    required this.alignment,
+    required this.onPressed,
   });
 
   final Color color;
   final IconData icon;
   final String label;
-  final Alignment alignment;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final children = [
-      Icon(icon, color: Colors.white),
-      const SizedBox(width: 8),
-      Text(
-        label,
-        style: Theme.of(context).textTheme.titleSmall
-            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-      ),
-    ];
-    return Container(
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: alignment == Alignment.centerLeft
-            ? children
-            : children.reversed.toList(),
+    return CustomSlidableAction(
+      onPressed: (_) => onPressed(),
+      backgroundColor: Colors.transparent,
+      foregroundColor: Colors.white,
+      padding: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: SizedBox.expand(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

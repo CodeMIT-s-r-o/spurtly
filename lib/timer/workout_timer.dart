@@ -123,6 +123,16 @@ class WorkoutTimer extends ChangeNotifier {
     tick();
   }
 
+  /// Ends the workout early; [activeTime] keeps the time done so far.
+  void stop() {
+    if (!_started || isFinished) return;
+    _banked = elapsed;
+    _halt();
+    _index = phases.length;
+    onPhaseChanged?.call(phase);
+    _notify();
+  }
+
   /// Advances to whichever phase [elapsed] falls into. Called periodically
   /// while running; safe to call at any time.
   void tick() {

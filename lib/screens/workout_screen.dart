@@ -7,6 +7,7 @@ import '../services/app_services.dart';
 import '../services/workout_library.dart';
 import '../theme.dart';
 import '../widgets/readable_width.dart';
+import '../widgets/rename_dialog.dart';
 import '../widgets/workout_form.dart';
 import 'start_workout.dart';
 
@@ -58,10 +59,7 @@ class _WorkoutEditor extends StatelessWidget {
       library.save(workout.copyWith(config: config));
 
   Future<void> _rename(BuildContext context) async {
-    final name = await showDialog<String>(
-      context: context,
-      builder: (_) => _RenameDialog(initialName: workout.name),
-    );
+    final name = await showRenameDialog(context, workout.name);
     if (name != null) library.save(workout.copyWith(name: name));
   }
 
@@ -206,55 +204,6 @@ class _WorkoutEditor extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _RenameDialog extends StatefulWidget {
-  const _RenameDialog({required this.initialName});
-
-  final String initialName;
-
-  @override
-  State<_RenameDialog> createState() => _RenameDialogState();
-}
-
-class _RenameDialogState extends State<_RenameDialog> {
-  late final _controller = TextEditingController(text: widget.initialName)
-    ..selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: widget.initialName.length,
-    );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final name = _controller.text.trim();
-    if (name.isNotEmpty) Navigator.pop(context, name);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Rename workout'),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        maxLength: 30,
-        textCapitalization: TextCapitalization.sentences,
-        onSubmitted: (_) => _submit(),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(onPressed: _submit, child: const Text('Save')),
-      ],
     );
   }
 }

@@ -59,6 +59,9 @@ class _TimerScreenState extends State<TimerScreen>
   late final AppLifecycleListener _lifecycle;
 
   bool _keepingAlive = false;
+
+  /// Ended with Stop rather than run to the end.
+  bool _stoppedEarly = false;
   bool _liveActivityShown = false;
 
   /// What the Live Activity was last told, so it is only updated when the
@@ -203,7 +206,9 @@ class _TimerScreenState extends State<TimerScreen>
     }
   }
 
-  Future<void> _confirmQuit() async {
+  /// Asks first, so a stray tap doesn't end the workout. Stop shows the
+  /// Done screen with the time done so far; closing leaves without it.
+  Future<void> _confirmEnd({required bool showSummary}) async {
     final wasRunning = _timer.isRunning;
     _timer.pause();
     final quit = await showDialog<bool>(
@@ -223,10 +228,13 @@ class _TimerScreenState extends State<TimerScreen>
       ),
     );
     if (!mounted) return;
-    if (quit ?? false) {
+    if (!(quit ?? false)) {
+      if (wasRunning) _timer.resume();
+    } else if (showSummary) {
+      _stoppedEarly = true;
+      _timer.stop();
+    } else {
       Navigator.of(context).pop();
-    } else if (wasRunning) {
-      _timer.resume();
     }
   }
 
@@ -256,7 +264,7 @@ class _TimerScreenState extends State<TimerScreen>
         return PopScope(
           canPop: _timer.isFinished,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) _confirmQuit();
+            if (!didPop) _confirmEnd(showSummary: false);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 400),
@@ -334,7 +342,12 @@ class _TimerScreenState extends State<TimerScreen>
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(width: 64),
+          _RoundButton(
+            size: 64,
+            icon: Icons.stop_rounded,
+            semanticLabel: 'Stop workout',
+            onPressed: () => _confirmEnd(showSummary: true),
+          ),
           const SizedBox(width: 28),
           _RoundButton(
             size: 88,
@@ -420,7 +433,7 @@ class _TimerScreenState extends State<TimerScreen>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Done!',
+                      _stoppedEarly ? 'Stopped' : 'Done!',
                       style: text.displayMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
