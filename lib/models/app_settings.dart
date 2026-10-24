@@ -9,11 +9,10 @@ class AppSettings {
   /// Chimes at the start of work, rest and the finish.
   final bool sounds;
 
-  /// Pips (and light taps, with [vibration]) in the last 3 seconds of a
-  /// phase.
+  /// Pips (and ticks, with [vibration]) in the last 3 seconds of a phase.
   final bool countdown;
 
-  /// A strong tap when a phase changes, while the app is on screen.
+  /// A vibration when a phase changes, also with the screen locked.
   final bool vibration;
 
   AppSettings copyWith({bool? sounds, bool? countdown, bool? vibration}) {

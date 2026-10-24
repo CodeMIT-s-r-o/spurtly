@@ -8,6 +8,7 @@ import 'services/app_services.dart';
 import 'services/live_activity.dart';
 import 'services/pro.dart';
 import 'services/sounds.dart';
+import 'services/vibrations.dart';
 import 'services/workout_library.dart';
 import 'services/workout_notifications.dart';
 
@@ -31,6 +32,7 @@ Future<void> main() async {
       library: library,
       services: AppServices(
         sounds: sounds,
+        vibrations: PlatformVibrations(),
         notifications: notifications,
         liveActivity: PlatformLiveActivity(),
         pro: pro,

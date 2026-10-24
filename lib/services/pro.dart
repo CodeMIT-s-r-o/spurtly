@@ -54,10 +54,12 @@ class StorePro extends SpurtlyPro {
   static const productId = 'spurtly_pro';
   static const _cacheKey = 'pro_v1';
 
-  /// Pro in debug builds without a store, for trying the Pro features:
-  /// `flutter run --dart-define=SPURTLY_PRO=true`. Always false in release.
+  /// Pro in debug and profile builds without a store, for trying the Pro
+  /// features: `flutter run --profile --dart-define=SPURTLY_PRO=true`. A
+  /// profile build also runs from the home screen on an iPhone. Always false
+  /// in release builds, which are the only ones that go to the stores.
   static const _debugUnlocked =
-      kDebugMode && bool.fromEnvironment('SPURTLY_PRO');
+      !kReleaseMode && bool.fromEnvironment('SPURTLY_PRO');
 
   final InAppPurchase _store;
   final SharedPreferencesAsync _prefs;

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1B6615392494476434AD1B81 /* VibrationChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19C775D83B1D5A8C55EF6D52 /* VibrationChannel.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -71,6 +72,7 @@
 		12F0F5EED5194B5688053CBA /* SpurtlyLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpurtlyLiveActivity.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		19C775D83B1D5A8C55EF6D52 /* VibrationChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VibrationChannel.swift; sourceTree = "<group>"; };
 		25381AB1EAEB941AE407851A /* SpurtlyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpurtlyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -180,6 +182,7 @@
 				0DCFDA973A278863BC839814 /* LiveActivityChannel.swift */,
 				E7879740121FCAD38E09796F /* PrivacyInfo.xcprivacy */,
 				69C9E62DA16D10A18C07151E /* Spurtly.storekit */,
+				19C775D83B1D5A8C55EF6D52 /* VibrationChannel.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -406,6 +409,7 @@
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				8A314373DAF2AAC8B3223B53 /* SpurtlyActivity.swift in Sources */,
 				B215E90F34EE32DCBF95D802 /* LiveActivityChannel.swift in Sources */,
+				1B6615392494476434AD1B81 /* VibrationChannel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

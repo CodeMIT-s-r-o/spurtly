@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Keeps the CPU awake while cues play with the screen off. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Vibrates along with the cues. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- WorkoutService keeps the cues audible while the screen is off. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />

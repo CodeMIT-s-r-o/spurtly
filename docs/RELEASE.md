@@ -350,7 +350,7 @@ Odomknutie je naviazané na Apple ID alebo Google účet a po uplatnení kódu p
 **Odporúčanie:** pre seba a rodinu Family Sharing / Family Library, prípadne license tester. Pre kamarátov a testerov offer kódy a promo kódy.
 
 ### 6.7 Testovanie nákupu
-- **Pro bez obchodu (len debug build):** `flutter run --dart-define=SPURTLY_PRO=true` zapne Pro na skúšanie funkcií. V release builde prepínač nefunguje (`kDebugMode`).
+- **Pro bez obchodu (debug a profile build):** `flutter run --profile --dart-define=SPURTLY_PRO=true` zapne Pro na skúšanie funkcií. Profile build sa na iPhone dá spúšťať aj z plochy. V release builde, ktorý ide do obchodov, prepínač nefunguje (`kReleaseMode`).
 - **iOS lokálne:** `ios/Runner/Spurtly.storekit` je StoreKit Configuration s produktom `spurtly_pro` za 4,99 € a schéma `Runner` ho používa pri Run.
   - Funguje len pri spustení **z Xcode** (`open ios/Runner.xcworkspace` → Run). `flutter run` ho nepoužije a obrazovka Pro ukáže, že App Store nie je dostupný.
   - Ak by ho Xcode nenašiel: Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration → `Spurtly.storekit`.

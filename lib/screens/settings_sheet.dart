@@ -57,7 +57,7 @@ Future<void> showSettingsSheet(
               SwitchListTile(
                 title: const Text('Vibration'),
                 subtitle: const Text(
-                  'A tap when the phase changes, while the app is open',
+                  'A buzz when the phase changes, also with the screen locked',
                 ),
                 value: settings.vibration,
                 onChanged: (on) =>

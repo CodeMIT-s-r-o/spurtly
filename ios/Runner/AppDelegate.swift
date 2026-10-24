@@ -5,6 +5,7 @@ import UserNotifications
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private var liveActivityChannel: LiveActivityChannel?
+  private var vibrationChannel: VibrationChannel?
 
   override func application(
     _ application: UIApplication,
@@ -18,6 +19,9 @@ import UserNotifications
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     liveActivityChannel = LiveActivityChannel(
+      messenger: engineBridge.applicationRegistrar.messenger()
+    )
+    vibrationChannel = VibrationChannel(
       messenger: engineBridge.applicationRegistrar.messenger()
     )
   }

@@ -60,10 +60,11 @@ flutter run
 
 Pick a device with `flutter devices` and `flutter run -d <device-id>`.
 
-To try the Pro features without a store, in debug builds only:
+To try the Pro features without a store (debug and profile builds only; a
+profile build also starts from the home screen on an iPhone):
 
 ```bash
-flutter run --dart-define=SPURTLY_PRO=true
+flutter run --profile --dart-define=SPURTLY_PRO=true
 ```
 
 To test the purchase itself on iOS, run from Xcode (`open ios/Runner.xcworkspace`);

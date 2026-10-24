@@ -9,6 +9,7 @@ import 'package:spurtly/services/app_services.dart';
 import 'package:spurtly/services/live_activity.dart';
 import 'package:spurtly/services/pro.dart';
 import 'package:spurtly/services/sounds.dart';
+import 'package:spurtly/services/vibrations.dart';
 import 'package:spurtly/services/workout_library.dart';
 import 'package:spurtly/screens/timer_screen.dart';
 import 'package:spurtly/services/workout_notifications.dart';
@@ -20,6 +21,13 @@ class _SilentSounds implements Sounds {
 
   @override
   Future<void> keepAlive(bool active) async {}
+}
+
+class _RecordingVibrations implements Vibrations {
+  final cues = <Cue>[];
+
+  @override
+  Future<void> vibrate(Cue cue) async => cues.add(cue);
 }
 
 class _NoLiveActivity implements LiveActivity {
@@ -84,6 +92,7 @@ class _FakePro extends SpurtlyPro {
 void main() {
   late WorkoutLibrary library;
   late _FakePro fakePro;
+  late _RecordingVibrations vibrations;
 
   setUp(() {
     // The timer keeps the screen on through wakelock_plus.
@@ -115,6 +124,7 @@ void main() {
         library: library,
         services: AppServices(
           sounds: _SilentSounds(),
+          vibrations: vibrations = _RecordingVibrations(),
           notifications: _NoNotifications(),
           liveActivity: _NoLiveActivity(),
           pro: fakePro = _FakePro(unlocked: pro),
@@ -326,6 +336,24 @@ void main() {
       final timer = tester.widget<TimerScreen>(find.byType(TimerScreen));
       expect(timer.name, 'Tabata');
       expect(timer.settings, const AppSettings(countdown: false));
+    });
+
+    testWidgets('a phase change vibrates, unless vibration is off', (
+      tester,
+    ) async {
+      await pumpApp(tester, pro: true);
+      await start(tester, find.bySemanticsLabel('Start Tabata'));
+      await tester.tap(find.bySemanticsLabel('Skip phase'));
+      await tester.pump();
+      expect(vibrations.cues, [Cue.work]);
+
+      Navigator.of(tester.element(find.byType(TimerScreen))).pop();
+      await tester.pumpAndSettle();
+      library.settings = const AppSettings(vibration: false);
+      await start(tester, find.bySemanticsLabel('Start Tabata'));
+      await tester.tap(find.bySemanticsLabel('Skip phase'));
+      await tester.pump();
+      expect(vibrations.cues, [Cue.work]);
     });
 
     testWidgets('settings switch signals off', (tester) async {

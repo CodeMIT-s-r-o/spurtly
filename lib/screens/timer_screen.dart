@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/app_settings.dart';
@@ -147,8 +146,9 @@ class _TimerScreenState extends State<TimerScreen>
     };
     if (cue != null) {
       if (widget.settings.sounds) unawaited(_services.sounds.play(cue));
-      // Haptics only work while the app is on screen.
-      if (widget.settings.vibration) unawaited(HapticFeedback.heavyImpact());
+      if (widget.settings.vibration) {
+        unawaited(_services.vibrations.vibrate(cue));
+      }
     }
     if (phase == null) unawaited(WakelockPlus.disable());
     final inBackground =
@@ -160,7 +160,9 @@ class _TimerScreenState extends State<TimerScreen>
     final settings = widget.settings;
     if (!settings.countdown) return;
     if (settings.sounds) unawaited(_services.sounds.play(Cue.countdown));
-    if (settings.vibration) unawaited(HapticFeedback.lightImpact());
+    if (settings.vibration) {
+      unawaited(_services.vibrations.vibrate(Cue.countdown));
+    }
   }
 
   void _notify(Phase? phase) {
